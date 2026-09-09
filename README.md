@@ -1,4 +1,4 @@
-# PAWS---Program-for-Automating-reporting-on-Work-Shifts
+# PAWS - Program for Automating reporting on Work Shifts
 ---
 
 ## 1. ОБЩИЕ СВЕДЕНИЯ
