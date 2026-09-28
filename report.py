@@ -1,48 +1,30 @@
 from datetime import date
 
-from db import Storage
-from models import Shift
+from models import Employee, Shift
 
 
 def calculate_duration(shift: Shift) -> float:
+    """Возвращает длительность смены в часах (делегирует модели Shift)."""
     return shift.calculate_duration
 
 
-def validate_shift(shift: Shift, storage: Storage) -> list[str]:
-
-    errors = []
-
-    if shift.employee_id not in storage.employees:
-        errors.append("Сотрудник с таким ID не найден")
-
-    if shift.time_start == shift.time_end:
-        errors.append("Время начала и окончания смены совпадает")
-
-    if shift.calculate_duration > 24:
-        errors.append("Смена не может длиться больше 24 часов")
-
-    for other in storage.shifts.values():
-        if other.employee_id == shift.employee_id and other.shift_date == shift.shift_date:
-            errors.append(
-                f"У сотрудника уже есть смена {other.shift_date} "
-                f"({other.time_start}-{other.time_end})"
-            )
-
-    return errors
-
-
 class ReportBuilder:
-    def __init__(self):
+    """Построитель отчёта по сменам: текст, строки для CSV и итоги."""
+
+    def __init__(self) -> None:
         self.lines: list[str] = []
         self.rows: list[tuple] = []
         self.totals: dict = {}
 
     def add_header(self, title: str, date_from: date, date_to: date) -> None:
+        """Добавляет заголовок отчёта с периодом."""
         self.lines.append(title)
         self.lines.append(f"Период: {date_from} - {date_to}")
         self.lines.append("-" * 60)
 
-    def add_table(self, shifts: list[Shift], employees: dict) -> None:
+    def add_table(self, shifts: list[Shift],
+                  employees: dict[str, Employee]) -> None:
+        """Добавляет таблицу смен и заполняет строки для экспорта в CSV."""
         self.lines.append(f"{'Сотрудник':22} {'Дата':11} {'Начало':7} {'Конец':7} {'Часы':6}")
         for shift in shifts:
             employee = employees.get(shift.employee_id)
@@ -56,10 +38,12 @@ class ReportBuilder:
             )
 
     def add_totals(self, shifts: list[Shift]) -> None:
+        """Добавляет итоговую строку с количеством смен и суммой часов."""
         total_hours = round(sum(s.calculate_duration for s in shifts), 2)
         self.lines.append("-" * 60)
         self.lines.append(f"Всего смен: {len(shifts)}   Всего часов: {total_hours}")
         self.totals = {"total_shifts": len(shifts), "total_hours": total_hours}
 
     def build(self) -> dict:
+        """Собирает отчёт в словарь с ключами 'text', 'rows' и 'totals'."""
         return {"text": "\n".join(self.lines), "rows": self.rows, "totals": self.totals}

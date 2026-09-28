@@ -2,9 +2,15 @@ from models import Employee, Shift, User
 
 
 class Storage:
-    _instance = None
+    """Хранилище данных приложения (синглтон).
 
-    def __new__(cls):
+    Хранит сотрудников, смены и пользователей в памяти
+    в словарях, ключами служат их ID/username.
+    """
+
+    _instance: "Storage | None" = None
+
+    def __new__(cls) -> "Storage":
         if cls._instance is None:
             obj = super().__new__(cls)
             obj.employees: dict[str, Employee] = {}
@@ -14,13 +20,16 @@ class Storage:
         return cls._instance
 
     def add_employee(self, employee: Employee) -> Employee:
+        """Сохраняет сотрудника в хранилище и возвращает его."""
         self.employees[employee.id] = employee
         return employee
 
     def add_shift(self, shift: Shift) -> Shift:
+        """Сохраняет смену в хранилище и возвращает её."""
         self.shifts[shift.id] = shift
         return shift
 
     def add_user(self, user: User) -> User:
+        """Сохраняет пользователя в хранилище и возвращает его."""
         self.users[user.username] = user
         return user
