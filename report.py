@@ -1,33 +1,31 @@
-from datetime import date, datetime, timedelta
+from datetime import date
 
 from db import Storage
-
-def calculate_duration(shift: dict) -> float:
-    start_dt = datetime.combine(shift["date"], shift["start"])
-    end_dt = datetime.combine(shift["date"], shift["end"])
-    if end_dt <= start_dt:
-        end_dt += timedelta(days=1)
-    return round((end_dt - start_dt).total_seconds() / 3600, 2)
+from models import Shift
 
 
-def validate_shift(shift: dict, storage: Storage) -> list[str]:
+def calculate_duration(shift: Shift) -> float:
+    return shift.calculate_duration
+
+
+def validate_shift(shift: Shift, storage: Storage) -> list[str]:
 
     errors = []
 
-    if shift["employee_id"] not in storage.employees:
+    if shift.employee_id not in storage.employees:
         errors.append("Сотрудник с таким ID не найден")
 
-    if shift["start"] == shift["end"]:
+    if shift.time_start == shift.time_end:
         errors.append("Время начала и окончания смены совпадает")
 
-    if calculate_duration(shift) > 24:
+    if shift.calculate_duration > 24:
         errors.append("Смена не может длиться больше 24 часов")
 
     for other in storage.shifts.values():
-        if other["employee_id"] == shift["employee_id"] and other["date"] == shift["date"]:
+        if other.employee_id == shift.employee_id and other.shift_date == shift.shift_date:
             errors.append(
-                f"У сотрудника уже есть смена {other['date']} "
-                f"({other['start']}-{other['end']})"
+                f"У сотрудника уже есть смена {other.shift_date} "
+                f"({other.time_start}-{other.time_end})"
             )
 
     return errors
@@ -44,21 +42,21 @@ class ReportBuilder:
         self.lines.append(f"Период: {date_from} - {date_to}")
         self.lines.append("-" * 60)
 
-    def add_table(self, shifts: list[dict], employees: dict) -> None:
+    def add_table(self, shifts: list[Shift], employees: dict) -> None:
         self.lines.append(f"{'Сотрудник':22} {'Дата':11} {'Начало':7} {'Конец':7} {'Часы':6}")
         for shift in shifts:
-            employee = employees.get(shift["employee_id"])
-            name = employee["full_name"] if employee else "?"
-            hours = calculate_duration(shift)
-            self.rows.append((name, str(shift["date"]), str(shift["start"]),
-                               str(shift["end"]), hours, shift["description"]))
+            employee = employees.get(shift.employee_id)
+            name = employee.full_name if employee else "?"
+            hours = shift.calculate_duration
+            self.rows.append((name, str(shift.shift_date), str(shift.time_start),
+                               str(shift.time_end), hours, shift.description))
             self.lines.append(
-                f"{name:22} {str(shift['date']):11} {str(shift['start']):7} "
-                f"{str(shift['end']):7} {hours:<6}"
+                f"{name:22} {str(shift.shift_date):11} {str(shift.time_start):7} "
+                f"{str(shift.time_end):7} {hours:<6}"
             )
 
-    def add_totals(self, shifts: list[dict]) -> None:
-        total_hours = round(sum(calculate_duration(s) for s in shifts), 2)
+    def add_totals(self, shifts: list[Shift]) -> None:
+        total_hours = round(sum(s.calculate_duration for s in shifts), 2)
         self.lines.append("-" * 60)
         self.lines.append(f"Всего смен: {len(shifts)}   Всего часов: {total_hours}")
         self.totals = {"total_shifts": len(shifts), "total_hours": total_hours}
