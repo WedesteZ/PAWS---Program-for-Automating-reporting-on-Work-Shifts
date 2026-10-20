@@ -15,6 +15,7 @@ wheels/
 
 # Database
 *.db
+db/
 
 # Tools
 .ruff_cache/
