@@ -1,6 +1,6 @@
-from db import Storage
-from models import Role, User
-from validation import validate_user
+from src.db import Storage
+from src.models import Role, User
+from src.validation import validate_user
 
 
 class AuthManager:

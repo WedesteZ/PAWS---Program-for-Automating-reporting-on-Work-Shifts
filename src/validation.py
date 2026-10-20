@@ -2,8 +2,8 @@ from datetime import date, time
 import re
 from typing import Callable
 
-from db import Storage
-from models import Role, Shift
+from src.db import Storage
+from src.models import Role, Shift
 
 
 NAME_PATTERN = re.compile(r"^[А-Яа-яЁёA-Za-z\- ]+$")

@@ -1,6 +1,6 @@
 from datetime import date
 
-from models import Employee, Shift
+from src.models import Employee, Shift
 
 
 def calculate_duration(shift: Shift) -> float:

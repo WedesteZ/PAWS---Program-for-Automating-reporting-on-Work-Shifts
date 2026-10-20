@@ -1,4 +1,4 @@
-from models import Employee, Shift, User
+from src.models import Employee, Shift, User
 
 
 class Storage:

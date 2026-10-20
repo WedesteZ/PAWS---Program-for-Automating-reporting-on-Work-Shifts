@@ -1,9 +1,9 @@
 from datetime import date, time
 
-from app import PawsApp
-from auth import AuthManager
-from models import Role, User
-from validation import (read_date, read_employee_id, read_full_name,
+from src.app import PawsApp
+from src.auth import AuthManager
+from src.models import Role, User
+from src.validation import (read_date, read_employee_id, read_full_name,
                         read_password, read_period, read_position,
                         read_report_format, read_role, read_time,
                         read_username)
