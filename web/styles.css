@@ -151,3 +151,36 @@ body:has(#role-manager:checked) .section-employees .form-group,
 body:has(#role-manager:checked) .section-employees .btn-primary {
   display: none !important;
 }
+
+/* ================= МОДАЛЬНЫЕ ОКНА И ДЕЙСТВИЯ (Только HTML/CSS) ================= */
+
+/* Прячем колонку "Действия" от всех ролей, кроме Администратора */
+body:not(:has(#role-admin:checked)) .admin-only {
+  display: none !important;
+}
+
+/* Базовые стили для затемнения фона и скрытия окон */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  width: 450px;
+  max-width: 90vw;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Логика открытия: если чекбокс нажат (checked), показываем соответствующее окно */
+#toggle-edit-emp:checked ~ .app-layout #modal-emp {
+  display: flex;
+}
+
+#toggle-edit-shift:checked ~ .app-layout #modal-shift {
+  display: flex;
+}
