@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PAWS — Программа для автоматизации отчетности по рабочим сменам</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Информационная плашка о режиме работы (достоверность данных) -->
+  <div class="demo-banner" role="status">
+    <span><strong>Режим клиентского прототипа (In-Memory Demo):</strong> данные хранятся в сессии браузера и синхронизированы со структурой <code>src/models.py</code>. Готово к подключению REST API.</span>
+    <button type="button" id="btn-reset-demo" class="btn-link">Сбросить демо-данные</button>
+  </div>
+
+  <!-- Контейнер всплывающих уведомлений -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- ================= ЭКРАН АВТОРИЗАЦИИ (Раздел 4.2.1, 5.3) ================= -->
+  <main id="auth-screen" class="auth-wrapper">
+    <section class="auth-card" aria-labelledby="auth-title">
+      <div class="auth-header">
+        <div class="brand-badge">PAWS</div>
+        <h1 id="auth-title">Вход в систему</h1>
+        <p class="auth-subtitle">Программа для автоматизации отчетности по рабочим сменам</p>
+      </div>
+
+      <form id="login-form" novalidate>
+        <div class="form-group" id="fg-login-username">
+          <label for="login-username">
+            Имя пользователя (логин)
+            <span class="required-badge">Обязательно заполнить</span>
+          </label>
+          <input type="text" id="login-username" name="username" required autocomplete="username" placeholder="Например: ivanov">
+          <span class="field-error" id="err-login-username"></span>
+        </div>
+
+        <div class="form-group" id="fg-login-password">
+          <label for="login-password">
+            Пароль
+            <span class="required-badge">Обязательно заполнить</span>
+          </label>
+          <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder="Введите пароль">
+          <span class="field-error" id="err-login-password"></span>
+        </div>
+
+        <div id="login-general-error" class="alert alert-error" hidden role="alert"></div>
+
+        <button type="submit" class="btn btn-primary btn-block">Войти в систему</button>
+      </form>
+
+      <div class="demo-accounts-box">
+        <p class="demo-accounts-title">Демонстрационные учётные записи для проверки ролей (ТЗ п. 3.4):</p>
+        <div class="demo-accounts-buttons">
+          <button type="button" class="btn btn-outline btn-sm" data-demo-user="ivanov" data-demo-pass="admin123">
+            Администратор (ivanov)
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" data-demo-user="petrov" data-demo-pass="manager123">
+            Руководитель (petrov)
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" data-demo-user="sidorov" data-demo-pass="emp123">
+            Сотрудник (sidorov)
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= ОСНОВНОЙ ИНТЕРФЕЙС СИСТЕМЫ ================= -->
+  <div id="app-layout" class="app-layout" hidden>
+    <!-- Боковая панель навигации (Раздел 4.5, 5.3) -->
+    <aside class="sidebar" aria-label="Главное навигационное меню">
+      <div class="sidebar-brand">
+        <span class="brand-badge">PAWS</span>
+        <div class="brand-text">
+          <strong>PAWS</strong>
+          <span>Учёт рабочих смен</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <ul class="nav-list">
+          <li>
+            <button type="button" class="nav-link active" data-section="dashboard">
+              <span>Главная страница</span>
+            </button>
+          </li>
+          <li data-role-allowed="admin,manager">
+            <button type="button" class="nav-link" data-section="employees">
+              <span>Сотрудники</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="nav-link" data-section="shifts">
+              <span>Рабочие смены</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="nav-link" data-section="search">
+              <span>Поиск и просмотр</span>
+            </button>
+          </li>
+          <li data-role-allowed="admin,manager">
+            <button type="button" class="nav-link" data-section="reports">
+              <span>Отчеты</span>
+            </button>
+          </li>
+          <li data-role-allowed="admin">
+            <button type="button" class="nav-link" data-section="admin">
+              <span>Администрирование</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sys-status">
+          <span class="status-dot"></span>
+          <span>Статус: <code>/health 200 OK</code></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Правая рабочая область -->
+    <div class="main-container">
+      <!-- Верхняя панель -->
+      <header class="topbar">
+        <div class="topbar-title">
+          <h2 id="current-page-title">Главная страница</h2>
+        </div>
+        <div class="topbar-user">
+          <div class="user-info">
+            <strong id="topbar-user-name">Иванов И.И.</strong>
+            <span id="topbar-user-role" class="role-badge">Администратор</span>
+          </div>
+          <button type="button" id="btn-logout" class="btn btn-outline btn-sm">Выход</button>
+        </div>
+      </header>
+
+      <!-- Контент разделов -->
+      <main class="content-area">
+
+        <!-- 1. ГЛАВНАЯ СТРАНИЦА (Сводка и быстрые переходы в 1 клик) -->
+        <section id="sec-dashboard" class="page-section">
+          <div class="quick-actions-bar">
+            <span class="quick-actions-label">Быстрые операции (переход в 1 шаг, ТЗ п. 4.5):</span>
+            <div class="quick-actions-buttons">
+              <button type="button" class="btn btn-primary" id="qa-create-shift">+ Создать рабочую смену</button>
+              <button type="button" class="btn btn-outline" id="qa-search-shifts">Поиск смен</button>
+              <button type="button" class="btn btn-outline" id="qa-build-report" data-role-allowed="admin,manager">Сформировать отчет</button>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <article class="stat-card">
+              <span class="stat-label">Активных сотрудников</span>
+              <strong class="stat-value" id="stat-active-employees">0</strong>
+              <span class="stat-meta" id="stat-total-employees">Всего в базе: 0</span>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Зарегистрировано смен</span>
+              <strong class="stat-value" id="stat-total-shifts">0</strong>
+              <span class="stat-meta">За текущий учетный период</span>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Суммарное время (ч)</span>
+              <strong class="stat-value" id="stat-total-hours">0.0</strong>
+              <span class="stat-meta">Автоматический расчёт</span>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Выполненных работ</span>
+              <strong class="stat-value" id="stat-total-works">0</strong>
+              <span class="stat-meta">Записей в сменах</span>
+            </article>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>Последние зарегистрированные рабочие смены</h3>
+              <button type="button" class="btn btn-outline btn-sm" data-goto="shifts">Все смены</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID смены</th>
+                    <th>Сотрудник</th>
+                    <th>Дата</th>
+                    <th>Начало — Окончание</th>
+                    <th>Продолжительность</th>
+                    <th>Выполненные работы</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboard-recent-shifts"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. СОТРУДНИКИ (Раздел 4.2.2, 5.2 п.1) -->
+        <section id="sec-employees" class="page-section" hidden>
+          <div class="section-Layout-2col">
+            <!-- Форма добавления / редактирования сотрудника -->
+            <div class="card" id="employee-form-card" data-role-allowed="admin">
+              <div class="card-header">
+                <h3 id="employee-form-title">Добавление сотрудника</h3>
+                <button type="button" id="btn-cancel-emp-edit" class="btn btn-outline btn-sm" hidden>Отмена</button>
+              </div>
+              <form id="employee-form" novalidate>
+                <input type="hidden" id="emp-edit-mode" value="create">
+
+                <div class="form-group" id="fg-emp-id">
+                  <label for="emp-id">
+                    Уникальный идентификатор сотрудника (ID)
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <input type="text" id="emp-id" name="id" required placeholder="Например: E004">
+                  <span class="field-error" id="err-emp-id"></span>
+                </div>
+
+                <div class="form-group" id="fg-emp-fullname">
+                  <label for="emp-fullname">
+                    Фамилия, имя, отчество
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <input type="text" id="emp-fullname" name="full_name" required placeholder="Смирнов Алексей Викторович">
+                  <span class="field-error" id="err-emp-fullname"></span>
+                </div>
+
+                <div class="form-group" id="fg-emp-position">
+                  <label for="emp-position">
+                    Должность
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <input type="text" id="emp-position" name="position" required placeholder="Инженер-программист">
+                  <span class="field-error" id="err-emp-position"></span>
+                </div>
+
+                <div class="form-group" id="fg-emp-department">
+                  <label for="emp-department">
+                    Подразделение или отдел
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <input type="text" id="emp-department" name="department" required placeholder="Отдел разработки ПО">
+                  <span class="field-error" id="err-emp-department"></span>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group" id="fg-emp-hiredate">
+                    <label for="emp-hiredate">
+                      Дата приёма на работу
+                      <span class="required-badge">Обязательно заполнить</span>
+                    </label>
+                    <input type="date" id="emp-hiredate" name="hire_date" required>
+                    <span class="field-error" id="err-emp-hiredate"></span>
+                  </div>
+
+                  <div class="form-group" id="fg-emp-status">
+                    <label for="emp-status">
+                      Статус сотрудника
+                      <span class="required-badge">Обязательно заполнить</span>
+                    </label>
+                    <select id="emp-status" name="active" required>
+                      <option value="true">Активен</option>
+                      <option value="false">Деактивирован</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group" id="fg-emp-contact">
+                  <label for="emp-contact">Контактные данные (телефон / email)</label>
+                  <input type="text" id="emp-contact" name="contact" placeholder="+7 (900) 000-00-00, user@vstu.ru">
+                </div>
+
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary" id="btn-save-emp">Сохранить</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Список и поиск сотрудников -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Справочник сотрудников</h3>
+              </div>
+
+              <div class="filter-bar">
+                <div class="form-group">
+                  <label for="filter-emp-query">Поиск сотрудника (ФИО, ID, должность, отдел)</label>
+                  <input type="search" id="filter-emp-query" placeholder="Введите текст для поиска...">
+                </div>
+                <div class="form-group">
+                  <label for="filter-emp-status">Статус</label>
+                  <select id="filter-emp-status">
+                    <option value="all">Все сотрудники</option>
+                    <option value="active">Только активные</option>
+                    <option value="inactive">Деактивированные</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>ФИО</th>
+                      <th>Должность / Отдел</th>
+                      <th>Дата приёма</th>
+                      <th>Контакты</th>
+                      <th>Статус</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody id="employees-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. РАБОЧИЕ СМЕНЫ И ВЫПОЛНЕННЫЕ РАБОТЫ (Раздел 4.2.3, 5.2 п.2-3) -->
+        <section id="sec-shifts" class="page-section" hidden>
+          <div class="section-Layout-2col">
+            <!-- Форма создания и редактирования рабочей смены -->
+            <div class="card">
+              <div class="card-header">
+                <h3 id="shift-form-title">Регистрация рабочей смены</h3>
+                <button type="button" id="btn-cancel-shift-edit" class="btn btn-outline btn-sm" hidden>Отмена</button>
+              </div>
+              <form id="shift-form" novalidate>
+                <input type="hidden" id="shift-edit-id" value="">
+
+                <div class="form-group" id="fg-shift-emp">
+                  <label for="shift-emp">
+                    Сотрудник
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <select id="shift-emp" name="employee_id" required></select>
+                  <span class="field-error" id="err-shift-emp"></span>
+                </div>
+
+                <div class="form-group" id="fg-shift-date">
+                  <label for="shift-date">
+                    Дата начала рабочей смены
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <input type="date" id="shift-date" name="shift_date" required>
+                  <span class="field-error" id="err-shift-date"></span>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group" id="fg-shift-start">
+                    <label for="shift-start">
+                      Время начала смены
+                      <span class="required-badge">Обязательно заполнить</span>
+                    </label>
+                    <input type="time" id="shift-start" name="time_start" required>
+                    <span class="field-error" id="err-shift-start"></span>
+                  </div>
+
+                  <div class="form-group" id="fg-shift-end">
+                    <label for="shift-end">
+                      Время окончания смены
+                      <span class="required-badge">Обязательно заполнить</span>
+                    </label>
+                    <input type="time" id="shift-end" name="time_end" required>
+                    <span class="field-error" id="err-shift-end"></span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="shift-allow-night" class="checkbox-label">
+                    <input type="checkbox" id="shift-allow-night" checked>
+                    <span>Разрешить переход через полночь (ночная смена, +1 сутки, ТЗ п. 7.1)</span>
+                  </label>
+                </div>
+
+                <div class="calculated-box" id="shift-calc-box">
+                  <span>Автоматический расчёт продолжительности:</span>
+                  <strong id="shift-calculated-hours">0.00 ч.</strong>
+                </div>
+
+                <div class="form-group" id="fg-shift-works">
+                  <label for="shift-works">
+                    Сведения о выполненных работах (каждая работа с новой строки)
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <textarea id="shift-works" name="works" rows="4" required placeholder="Например:&#10;Проверка оборудования&#10;Обслуживание серверной стойки"></textarea>
+                  <span class="field-error" id="err-shift-works"></span>
+                </div>
+
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary" id="btn-save-shift">Сохранить</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Таблица истории рабочих смен -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Журнал учёта рабочих смен и выполненных работ</h3>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>ID смены</th>
+                      <th>Сотрудник</th>
+                      <th>Дата</th>
+                      <th>Начало — Окончание</th>
+                      <th>Часы</th>
+                      <th>Выполненные работы (ID работы: описание)</th>
+                      <th>Изменено</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody id="shifts-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. ПОИСК И ПРОСМОТР ИНФОРМАЦИИ (Раздел 4.2.4, 5.3) -->
+        <section id="sec-search" class="page-section" hidden>
+          <div class="card">
+            <div class="card-header">
+              <h3>Поиск рабочих смен и выполненных работ по параметрам</h3>
+            </div>
+            <form id="search-form" class="filter-bar-grid">
+              <div class="form-group">
+                <label for="search-emp">Сотрудник</label>
+                <select id="search-emp">
+                  <option value="all">Все сотрудники</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="search-date-from">Дата начала периода</label>
+                <input type="date" id="search-date-from">
+              </div>
+              <div class="form-group">
+                <label for="search-date-to">Дата окончания периода</label>
+                <input type="date" id="search-date-to">
+              </div>
+              <div class="form-group">
+                <label for="search-work-text">Поиск по описанию выполненной работы</label>
+                <input type="search" id="search-work-text" placeholder="Ключевое слово...">
+              </div>
+              <div class="form-group filter-actions">
+                <button type="submit" class="btn btn-primary">Найти записи</button>
+                <button type="button" id="btn-search-reset" class="btn btn-outline">Сбросить</button>
+              </div>
+            </form>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID смены</th>
+                    <th>Сотрудник (Отдел)</th>
+                    <th>Дата смены</th>
+                    <th>Интервал</th>
+                    <th>Продолжительность</th>
+                    <th>Выполненные работы</th>
+                  </tr>
+                </thead>
+                <tbody id="search-results-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. ОТЧЕТЫ И ЭКСПОРТ (Раздел 4.2.5, 4.2.6, 5.4) -->
+        <section id="sec-reports" class="page-section" hidden>
+          <div class="card">
+            <div class="card-header">
+              <h3>Формирование и экспорт отчётности</h3>
+            </div>
+
+            <form id="report-form" novalidate>
+              <div class="filter-bar-grid">
+                <div class="form-group" id="fg-rep-type">
+                  <label for="rep-type">
+                    Тип отчёта
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <select id="rep-type" name="report_type" required>
+                    <option value="period">Сводный отчёт за период</option>
+                    <option value="daily">Ежедневный отчёт за выбранную дату</option>
+                  </select>
+                  <span class="field-error"></span>
+                </div>
+
+                <!-- Поле для ежедневного отчета -->
+                <div class="form-group" id="fg-rep-single-date" hidden>
+                  <label for="rep-single-date">
+                    Календарная дата отчёта
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <input type="date" id="rep-single-date">
+                  <span class="field-error" id="err-rep-single-date"></span>
+                </div>
+
+                <!-- Поля для сводного отчета за период -->
+                <div class="form-group" id="fg-rep-start">
+                  <label for="rep-start">
+                    Начало отчётного периода
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <input type="date" id="rep-start" required>
+                  <span class="field-error" id="err-rep-start"></span>
+                </div>
+
+                <div class="form-group" id="fg-rep-end">
+                  <label for="rep-end">
+                    Окончание отчётного периода
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <input type="date" id="rep-end" required>
+                  <span class="field-error" id="err-rep-end"></span>
+                </div>
+
+                <div class="form-group">
+                  <label for="rep-dept">Фильтр по группе (подразделению)</label>
+                  <select id="rep-dept">
+                    <option value="all">Все подразделения</option>
+                  </select>
+                  <span class="field-error"></span>
+                </div>
+
+                <div class="form-group">
+                  <label for="rep-emp">Фильтр по сотруднику</label>
+                  <select id="rep-emp">
+                    <option value="all">Все сотрудники</option>
+                  </select>
+                  <span class="field-error"></span>
+                </div>
+              </div> <!-- Именно этот закрывающий div ранее потерялся -->
+
+              <div class="report-controls-bar">
+                <button type="submit" class="btn btn-primary">Сформировать отчет</button>
+
+                <div class="export-group">
+                  <label for="rep-export-format">Формат выгрузки (ТЗ п. 4.2.6):</label>
+                  <select id="rep-export-format">
+                    <option value="pdf">PDF (для просмотра и печати)</option>
+                    <option value="xlsx">XLSX / Табличный совместимый (Excel)</option>
+                    <option value="csv">CSV (реализация src/export.py)</option>
+                    <option value="txt">TXT (реализация src/export.py)</option>
+                  </select>
+                  <button type="button" id="btn-export-report" class="btn btn-outline" disabled>Экспортировать</button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- Область предпросмотра сформированного отчета -->
+          <div class="card" id="report-preview-card" hidden>
+            <div class="card-header">
+              <h3 id="report-doc-title">Сформированный отчёт</h3>
+              <span class="badge-info" id="report-doc-timestamp"></span>
+            </div>
+
+            <div class="report-meta-box">
+              <div><strong>Тип отчёта:</strong> <span id="rep-meta-type"></span></div>
+              <div><strong>Отчётный период:</strong> <span id="rep-meta-period"></span></div>
+              <div><strong>Выборка сотрудников:</strong> <span id="rep-meta-filter"></span></div>
+              <div><strong>Сформировал пользователь:</strong> <span id="rep-meta-author"></span></div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Сотрудник</th>
+                    <th>Должность / Отдел</th>
+                    <th>Дата смены</th>
+                    <th>Начало смены</th>
+                    <th>Окончание смены</th>
+                    <th>Продолжительность (ч)</th>
+                    <th>Выполненные работы</th>
+                  </tr>
+                </thead>
+                <tbody id="report-preview-body"></tbody>
+                <tfoot id="report-preview-foot"></tfoot>
+              </table>
+            </div>
+          </div>
+
+          <!-- Журнал сформированных отчетов (ТЗ п. 5.2 п.4) -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Реестр сформированных отчётов в базе данных (ТЗ п. 5.2 п.4)</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID отчёта</th>
+                    <th>Тип отчёта</th>
+                    <th>Период / Дата</th>
+                    <th>Фильтр сотрудников</th>
+                    <th>Дата формирования</th>
+                    <th>Пользователь</th>
+                    <th>Экспорт</th>
+                  </tr>
+                </thead>
+                <tbody id="report-history-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. АДМИНИСТРИРОВАНИЕ: ПОЛЬЗОВАТЕЛИ, НАСТРОЙКИ, РЕЗЕРВНОЕ КОПИРОВАНИЕ (ТЗ п. 4.3, 5.2 п.5, 6.2) -->
+        <section id="sec-admin" class="page-section" hidden>
+          <div class="section-Layout-2col">
+            <!-- Управление учетными записями пользователей -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Управление пользователями и ролями</h3>
+              </div>
+              <form id="user-form" novalidate>
+                <div class="form-group" id="fg-usr-username">
+                  <label for="usr-username">
+                    Логин пользователя
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <input type="text" id="usr-username" required placeholder="Например: smirnov">
+                  <span class="field-error" id="err-usr-username"></span>
+                </div>
+
+                <div class="form-group" id="fg-usr-password">
+                  <label for="usr-password">
+                    Пароль (сохраняется как криптохеш PBKDF2)
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <input type="password" id="usr-password" required placeholder="Минимум 6 символов">
+                  <span class="field-error" id="err-usr-password"></span>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group" id="fg-usr-emp">
+                    <label for="usr-emp">
+                      Привязка к сотруднику
+                      <span class="required-badge">Обязательно заполнить</span>
+                    </label>
+                    <select id="usr-emp" required></select>
+                    <span class="field-error" id="err-usr-emp"></span>
+                  </div>
+
+                  <div class="form-group" id="fg-usr-role">
+                    <label for="usr-role">
+                      Роль в системе
+                      <span class="required-badge">Обязательно заполнить</span>
+                    </label>
+                    <select id="usr-role" required>
+                      <option value="employee">Сотрудник (employee)</option>
+                      <option value="manager">Руководитель (manager)</option>
+                      <option value="admin">Администратор (admin)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+              </form>
+
+              <div class="table-responsive mt-16">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Логин</th>
+                      <th>Сотрудник (ID)</th>
+                      <th>Роль</th>
+                      <th>Хранение пароля (ТЗ п. 4.4)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Системные параметры и резервное копирование (ТЗ п. 4.3, 5.2 п.5) -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Параметры системы и резервное копирование</h3>
+              </div>
+              <form id="settings-form">
+                <div class="form-group">
+                  <label for="set-org-name">
+                    Наименование организации / заказчика
+                    <span class="required-badge">Обязательно заполнить</span>
+                  </label>
+                  <input type="text" id="set-org-name" value="ВолгГТУ, кафедра «ПОАС»" required>
+                </div>
+                <div class="form-group">
+                  <label for="set-default-format">Формат экспорта отчётов по умолчанию</label>
+                  <select id="set-default-format">
+                    <option value="pdf">PDF</option>
+                    <option value="xlsx">XLSX</option>
+                    <option value="csv">CSV</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="set-max-shift-hours">Максимальная допустимая длительность смены (часов)</label>
+                  <input type="number" id="set-max-shift-hours" value="24" min="1" max="24" required>
+                </div>
+                <p class="settings-meta" id="settings-updated-meta">Последнее обновление настроек: не изменялись</p>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+              </form>
+
+              <hr class="divider">
+
+              <div class="backup-section">
+                <h4>Резервное копирование базы данных (ТЗ п. 4.3, 6.2)</h4>
+                <p class="text-muted">Выгрузка полной структуры данных (сотрудники, смены, выполненные работы, отчёты, настройки) в JSON-снимок и восстановление из файла.</p>
+                <div class="backup-actions">
+                  <button type="button" id="btn-backup-export" class="btn btn-outline">Создать резервную копию (JSON)</button>
+                  <label for="backup-file-input" class="btn btn-outline file-label">Восстановить из копии</label>
+                  <input type="file" id="backup-file-input" accept=".json" hidden>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ================= МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ (ТЗ п. 4.5) ================= -->
+  <div id="confirm-modal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <h3 id="modal-title">Подтверждение операции</h3>
+      <p id="modal-message">Вы действительно хотите удалить выбранную запись?</p>
+      <div class="modal-actions">
+        <button type="button" id="btn-modal-cancel" class="btn btn-outline">Отмена</button>
+        <button type="button" id="btn-modal-confirm" class="btn btn-danger">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
