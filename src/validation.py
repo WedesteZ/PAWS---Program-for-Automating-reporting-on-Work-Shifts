@@ -70,14 +70,6 @@ def validate_password(password: str) -> list[str]:
     return errors
 
 
-def validate_report_format(fmt: str) -> list[str]:
-    """Проверяет формат отчёта. Возвращает список ошибок."""
-    if fmt not in REPORT_FORMATS:
-        return [f"Неизвестный формат '{fmt}', доступны: {'/'.join(REPORT_FORMATS)}"]
-    return []
-
-
-
 def validate_shift(shift: Shift, storage: Storage) -> list[str]:
     """Проверяет смену на корректность. Возвращает список ошибок."""
     errors = []
@@ -88,7 +80,7 @@ def validate_shift(shift: Shift, storage: Storage) -> list[str]:
     if shift.time_start == shift.time_end:
         errors.append("Время начала и окончания смены совпадает")
 
-    if shift.calculate_duration > 24:
+    if shift.duration_hours > 24:
         errors.append("Смена не может длиться больше 24 часов")
 
     for other in storage.shifts.values():

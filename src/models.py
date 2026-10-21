@@ -42,6 +42,14 @@ class User:
     id: str = field(default_factory=new_id)
 
 
+class ShiftStatus(Enum):
+    """Статус рабочей смены."""
+
+    DRAFT = "draft"
+    CONFIRMED = "confirmed"
+    CLOSED = "closed"
+
+
 @dataclass
 class Shift:
     """Рабочая смена сотрудника.
@@ -55,11 +63,11 @@ class Shift:
     time_start: time
     time_end: time
     description: str = ""
-    status: str = "draft"
+    status: ShiftStatus = ShiftStatus.DRAFT
     id: str = field(default_factory=new_id)
 
     @property
-    def calculate_duration(self) -> float:
+    def duration_hours(self) -> float:
         """Длительность смены в часах (округление до 2 знаков)."""
         start_dt = datetime.combine(self.shift_date, self.time_start)
         end_dt = datetime.combine(self.shift_date, self.time_end)

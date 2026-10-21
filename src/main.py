@@ -125,7 +125,7 @@ def run_main_menu(app: PawsApp, auth: AuthManager) -> None:
                     description = input("Описание выполненных работ: ").strip()
                     shift = app.add_shift(employee_id, shift_date, start, end, description)
                     print(f"Смена добавлена (id={shift.id}, "
-                          f"{shift.calculate_duration} ч.)")
+                          f"{shift.duration_hours} ч.)")
 
                 case "4":
                     employee_id = read_employee_id("ID сотрудника: ", app.storage)
@@ -134,7 +134,7 @@ def run_main_menu(app: PawsApp, auth: AuthManager) -> None:
                         print("Смен не найдено")
                     for s in shifts:
                         print(f"  {s.shift_date} {s.time_start}-{s.time_end} "
-                              f"({s.calculate_duration} ч.) - {s.description}")
+                              f"({s.duration_hours} ч.) - {s.description}")
 
                 case "5":
                     date_from, date_to = read_period()
@@ -170,7 +170,7 @@ def run_main_menu(app: PawsApp, auth: AuthManager) -> None:
                     print("До свидания!")
                     return
 
-                case "_":
+                case _:
                     print("Неизвестный пункт меню, попробуйте снова")
 
         except Exception as error:

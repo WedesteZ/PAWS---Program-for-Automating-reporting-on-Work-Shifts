@@ -3,11 +3,6 @@ from datetime import date
 from src.models import Employee, Shift, ReportRow, Report
 
 
-def calculate_duration(shift: Shift) -> float:
-    """Возвращает длительность смены в часах (делегирует модели Shift)."""
-    return shift.calculate_duration
-
-
 class ReportBuilder:
     """Построитель отчёта по сменам: текст, строки для CSV и итоги."""
 
@@ -30,7 +25,7 @@ class ReportBuilder:
         for shift in shifts:
             employee = employees.get(shift.employee_id)
             name = employee.full_name if employee else "?"
-            hours = shift.calculate_duration
+            hours = shift.duration_hours
             self.rows.append(ReportRow(
                                 employee=name, shift_date=shift.shift_date,
                                 time_start=shift.time_start, time_end=shift.time_end,
@@ -43,7 +38,7 @@ class ReportBuilder:
 
     def add_totals(self, shifts: list[Shift]) -> None:
         """Добавляет итоговую строку с количеством смен и суммой часов."""
-        total_hours = round(sum(s.calculate_duration for s in shifts), 2)
+        total_hours = round(sum(s.duration_hours for s in shifts), 2)
         self.lines.append("-" * 60)
         self.lines.append(f"Всего смен: {len(shifts)}   Всего часов: {total_hours}")
         self.total_shifts = len(shifts)
