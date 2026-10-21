@@ -141,7 +141,7 @@ def run_main_menu(app: PawsApp, auth: AuthManager) -> None:
                     employee_id = read_employee_id(
                         "ID сотрудника (пусто - по всем): ", app.storage, allow_empty=True)
                     report = app.generate_report(date_from, date_to, employee_id)
-                    print(report["text"])
+                    print(report.text)
                     fmt = read_report_format()
                     filename = f"report.{fmt}"
                     app.export_report(report, fmt, filename)

@@ -66,3 +66,25 @@ class Shift:
         if end_dt <= start_dt:
             end_dt = end_dt + timedelta(days=1)
         return round((end_dt - start_dt).total_seconds() / 3600, 2)
+
+
+@dataclass(frozen=True)
+class ReportRow:
+    """Строка отчёта: одна смена одного сотрудника."""
+
+    employee: str
+    shift_date: date
+    time_start: time
+    time_end: time
+    hours: float
+    description: str
+
+
+@dataclass(frozen=True)
+class Report:
+    """Готовый отчёт: текст для вывода, строки таблицы и итоги."""
+
+    text: str
+    rows: list[ReportRow]
+    total_shifts: int
+    total_hours: float

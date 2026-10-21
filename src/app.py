@@ -1,7 +1,7 @@
 from datetime import date, time
 
 from src.db import Storage
-from src.models import Employee, Shift
+from src.models import Employee, Report, Shift
 from src.report import ReportBuilder
 from src.export import get_exporter
 from src.validation import validate_shift
@@ -44,10 +44,10 @@ class PawsApp:
         return sorted(shifts, key=lambda s: (s.shift_date, s.time_start))
 
     def generate_report(self, date_from: date, date_to: date,
-                         employee_id: str | None = None) -> dict:
+                         employee_id: str | None = None) -> Report:
         """Формирует отчёт по сменам за период (по одному или всем сотрудникам).
 
-        Возвращает словарь с ключами 'text', 'rows' и 'totals'.
+        Возвращает объект отчёта.
         """
         shifts = [
             s for s in self.storage.shifts.values()
@@ -68,7 +68,7 @@ class PawsApp:
         builder.add_totals(shifts)
         return builder.build()
 
-    def export_report(self, report: dict, fmt: str, filename: str) -> str:
+    def export_report(self, report: Report, fmt: str, filename: str) -> Report:
         """Сохраняет отчёт в файл выбранного формата. Возвращает имя файла."""
         exporter = get_exporter(fmt)
         return exporter.export(report, filename)

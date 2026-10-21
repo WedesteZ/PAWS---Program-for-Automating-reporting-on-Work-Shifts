@@ -1,6 +1,6 @@
 from datetime import date
 
-from src.models import Employee, Shift
+from src.models import Employee, Shift, ReportRow, Report
 
 
 def calculate_duration(shift: Shift) -> float:
@@ -13,8 +13,9 @@ class ReportBuilder:
 
     def __init__(self) -> None:
         self.lines: list[str] = []
-        self.rows: list[tuple] = []
-        self.totals: dict = {}
+        self.rows: list[ReportRow] = []
+        self.total_shifts = 0
+        self.total_hours = 0.0
 
     def add_header(self, title: str, date_from: date, date_to: date) -> None:
         """Добавляет заголовок отчёта с периодом."""
@@ -30,8 +31,11 @@ class ReportBuilder:
             employee = employees.get(shift.employee_id)
             name = employee.full_name if employee else "?"
             hours = shift.calculate_duration
-            self.rows.append((name, str(shift.shift_date), str(shift.time_start),
-                               str(shift.time_end), hours, shift.description))
+            self.rows.append(ReportRow(
+                                employee=name, shift_date=shift.shift_date,
+                                time_start=shift.time_start, time_end=shift.time_end,
+                                hours=hours, description=shift.description
+                            ))
             self.lines.append(
                 f"{name:22} {str(shift.shift_date):11} {str(shift.time_start):7} "
                 f"{str(shift.time_end):7} {hours:<6}"
@@ -42,8 +46,11 @@ class ReportBuilder:
         total_hours = round(sum(s.calculate_duration for s in shifts), 2)
         self.lines.append("-" * 60)
         self.lines.append(f"Всего смен: {len(shifts)}   Всего часов: {total_hours}")
-        self.totals = {"total_shifts": len(shifts), "total_hours": total_hours}
+        self.total_shifts = len(shifts)
+        self.total_hours = total_hours
 
-    def build(self) -> dict:
-        """Собирает отчёт в словарь с ключами 'text', 'rows' и 'totals'."""
-        return {"text": "\n".join(self.lines), "rows": self.rows, "totals": self.totals}
+    def build(self) -> Report:
+        """Собирает готовый отчёт из накопленных частей."""
+        return Report(text="\n".join(self.lines), rows=self.rows,
+                  total_shifts=self.total_shifts,
+                  total_hours=self.total_hours)
