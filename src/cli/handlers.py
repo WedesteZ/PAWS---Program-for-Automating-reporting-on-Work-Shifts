@@ -1,9 +1,17 @@
 from src.app import PawsApp
 from src.auth import AuthManager
-from src.cli.prompts import (read_date, read_employee_id, read_full_name,
-                             read_password, read_period, read_position,
-                             read_report_format, read_role, read_time,
-                             read_username)
+from src.cli.prompts import (
+    read_date,
+    read_employee_id,
+    read_full_name,
+    read_password,
+    read_period,
+    read_position,
+    read_report_format,
+    read_role,
+    read_time,
+    read_username,
+)
 from src.models import User
 
 MAX_LOGIN_ATTEMPTS = 3
@@ -66,15 +74,18 @@ def handle_list_shifts(app: PawsApp) -> None:
     if not shifts:
         print("Смен не найдено")
     for s in shifts:
-        print(f"  {s.shift_date} {s.time_start}-{s.time_end} "
-              f"({s.duration_hours} ч.) - {s.description}")
+        print(
+            f"  {s.shift_date} {s.time_start}-{s.time_end} "
+            f"({s.duration_hours} ч.) - {s.description}"
+        )
 
 
 def handle_report(app: PawsApp) -> None:
     """Формирует отчёт за период, выводит его и сохраняет в файл."""
     date_from, date_to = read_period()
     employee_id = read_employee_id(
-        "ID сотрудника (пусто - по всем): ", app.storage, allow_empty=True)
+        "ID сотрудника (пусто - по всем): ", app.storage, allow_empty=True
+    )
     report = app.generate_report(date_from, date_to, employee_id)
     print(report.text)
     fmt = read_report_format()
@@ -90,8 +101,9 @@ def handle_add_user(app: PawsApp, auth: AuthManager) -> None:
     employee_id = read_employee_id("ID сотрудника: ", app.storage)
     role = read_role("Роль")
     user = auth.add_user(username, password, employee_id, role)
-    print(f"Пользователь добавлен: {user.username} "
-          f"(роль={user.role.value}, id={user.id})")
+    print(
+        f"Пользователь добавлен: {user.username} (роль={user.role.value}, id={user.id})"
+    )
 
 
 def handle_list_users(app: PawsApp, auth: AuthManager) -> None:
@@ -102,5 +114,4 @@ def handle_list_users(app: PawsApp, auth: AuthManager) -> None:
     for u in users:
         employee = app.storage.employees.get(u.employee_id)
         name = employee.full_name if employee else "?"
-        print(f"  {u.username:15} роль={u.role.value:8} "
-              f"сотрудник={name} (id={u.id})")
+        print(f"  {u.username:15} роль={u.role.value:8} сотрудник={name} (id={u.id})")

@@ -3,9 +3,8 @@ import re
 from src.db import Storage
 from src.models import Shift
 
-
 NAME_PATTERN = re.compile(r"^[А-Яа-яЁёA-Za-z\- ]+$")
-USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.\-]{3,30}$")\
+USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.\-]{3,30}$")
 
 
 def validate_full_name(full_name: str) -> list[str]:
@@ -45,8 +44,10 @@ def validate_username(username: str) -> list[str]:
         errors.append("Имя пользователя не может быть пустым")
 
     if username and not USERNAME_PATTERN.fullmatch(username):
-        errors.append("Логин может содержать только латинские буквы, "
-                      "цифры и символы _ . - (3-30 символов)")
+        errors.append(
+            "Логин может содержать только латинские буквы, "
+            "цифры и символы _ . - (3-30 символов)"
+        )
 
     return errors
 
@@ -81,7 +82,10 @@ def validate_shift(shift: Shift, storage: Storage) -> list[str]:
         errors.append("Смена не может длиться больше 24 часов")
 
     for other in storage.shifts.values():
-        if other.employee_id == shift.employee_id and other.shift_date == shift.shift_date:
+        if (
+            other.employee_id == shift.employee_id
+            and other.shift_date == shift.shift_date
+        ):
             errors.append(
                 f"У сотрудника уже есть смена {other.shift_date} "
                 f"({other.time_start}-{other.time_end})"
@@ -90,8 +94,9 @@ def validate_shift(shift: Shift, storage: Storage) -> list[str]:
     return errors
 
 
-def validate_user(username: str, password: str,
-                  employee_id: str, storage: Storage) -> list[str]:
+def validate_user(
+    username: str, password: str, employee_id: str, storage: Storage
+) -> list[str]:
     """Проверяет данные нового пользователя. Возвращает список ошибок."""
     errors = validate_username(username)
 
@@ -103,7 +108,9 @@ def validate_user(username: str, password: str,
     if employee_id not in storage.employees:
         errors.append("Сотрудник с таким ID не найден")
     elif any(u.employee_id == employee_id for u in storage.users.values()):
-        errors.append("У этого сотрудника уже есть учётная запись "
-                      "(один сотрудник — один пользователь)")
+        errors.append(
+            "У этого сотрудника уже есть учётная запись "
+            "(один сотрудник — один пользователь)"
+        )
 
     return errors

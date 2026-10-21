@@ -1,6 +1,6 @@
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, time, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from enum import Enum
 
 
@@ -12,9 +12,9 @@ def new_id() -> str:
 class Role(Enum):
     """Роль пользователя в системе."""
 
-    ADMIN = 'admin'
-    MANAGER = 'manager'
-    EMPLOYEE = 'employee'
+    ADMIN = "admin"
+    MANAGER = "manager"
+    EMPLOYEE = "employee"
 
 
 @dataclass

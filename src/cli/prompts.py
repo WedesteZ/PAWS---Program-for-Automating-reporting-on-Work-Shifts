@@ -1,15 +1,17 @@
+from collections.abc import Callable
 from datetime import date, time
-from typing import Callable
 
 from src.db import Storage
 from src.export import EXPORTERS
 from src.models import Role
-from src.validation import (validate_full_name, validate_password,
-                            validate_position, validate_username)
+from src.validation import (
+    validate_full_name,
+    validate_password,
+    validate_position,
+    validate_username,
+)
 
 REPORT_FORMATS = tuple(EXPORTERS)
-
-
 
 
 def read_nonempty(prompt: str) -> str:
@@ -51,8 +53,9 @@ def read_period() -> tuple[date, date]:
         print("Начало периода не может быть позже его окончания, попробуйте снова")
 
 
-def read_employee_id(prompt: str, storage: Storage,
-                     allow_empty: bool = False) -> str | None:
+def read_employee_id(
+    prompt: str, storage: Storage, allow_empty: bool = False
+) -> str | None:
     """Запрашивает ID существующего сотрудника до корректного ввода.
 
     Перед вводом показывает список доступных сотрудников.
@@ -83,8 +86,7 @@ def read_role(prompt: str) -> Role:
             print(f"Неизвестная роль '{raw}', доступны: {roles}")
 
 
-def read_choice(prompt: str, choices: tuple[str, ...],
-                default: str = "") -> str:
+def read_choice(prompt: str, choices: tuple[str, ...], default: str = "") -> str:
     """Запрашивает выбор одного из вариантов (пустой ввод — значение по умолчанию)."""
     while True:
         raw = input(f"{prompt} ({'/'.join(choices)}): ").strip().lower()
@@ -96,7 +98,7 @@ def read_choice(prompt: str, choices: tuple[str, ...],
 
 
 def read_validated(prompt: str, validator: Callable[[str], list[str]]) -> str:
-    """Запрашивает значение до тех пор, пока validator не вернёт пустой список ошибок."""
+    """Запрашивает значение, пока validator не вернёт пустой список ошибок."""
     while True:
         value = input(prompt).strip()
         errors = validator(value)

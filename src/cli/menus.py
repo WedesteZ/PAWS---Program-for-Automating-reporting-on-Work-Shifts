@@ -1,13 +1,18 @@
 from enum import IntEnum
-from typing import TypeVar
 
 from src.app import PawsApp
 from src.auth import AuthManager
-from src.cli.handlers import (handle_add_employee, handle_add_shift,
-                              handle_add_user, handle_list_employees,
-                              handle_list_shifts, handle_list_users,
-                              handle_login, handle_report,
-                              handle_show_passwords)
+from src.cli.handlers import (
+    handle_add_employee,
+    handle_add_shift,
+    handle_add_user,
+    handle_list_employees,
+    handle_list_shifts,
+    handle_list_users,
+    handle_login,
+    handle_report,
+    handle_show_passwords,
+)
 from src.models import User
 
 AUTH_MENU = """
@@ -28,8 +33,6 @@ MAIN_MENU = """
 7. Показать список пользователей
 0. Выход
 Выберите пункт: """
-
-MenuChoiceT = TypeVar("MenuChoiceT", bound=IntEnum)
 
 
 class AuthMenuChoice(IntEnum):
@@ -53,7 +56,7 @@ class MainMenuChoice(IntEnum):
     LIST_USERS = 7
 
 
-def read_menu_choice(
+def read_menu_choice[MenuChoiceT: IntEnum](
     menu_text: str, choice_type: type[MenuChoiceT]
 ) -> MenuChoiceT | None:
     """Показывает меню и возвращает выбранный пункт или None при неверном вводе."""

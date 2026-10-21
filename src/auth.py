@@ -9,8 +9,9 @@ class AuthManager:
     def __init__(self, storage: Storage) -> None:
         self.storage = storage
 
-    def add_user(self, username: str, password: str,
-                 employee_id: str, role: Role) -> User:
+    def add_user(
+        self, username: str, password: str, employee_id: str, role: Role
+    ) -> User:
         """Создаёт нового пользователя после проверки данных.
 
         Raises:
@@ -19,8 +20,9 @@ class AuthManager:
         errors = validate_user(username, password, employee_id, self.storage)
         if errors:
             raise ValueError("; ".join(errors))
-        user = User(username=username, password=password,
-                    employee_id=employee_id, role=role)
+        user = User(
+            username=username, password=password, employee_id=employee_id, role=role
+        )
         return self.storage.add_user(user)
 
     def list_users(self) -> list[User]:

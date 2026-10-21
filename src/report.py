@@ -1,6 +1,6 @@
 from datetime import date
 
-from src.models import Employee, Shift, ReportRow, Report
+from src.models import Employee, Report, ReportRow, Shift
 
 
 class ReportBuilder:
@@ -18,19 +18,25 @@ class ReportBuilder:
         self.lines.append(f"Период: {date_from} - {date_to}")
         self.lines.append("-" * 60)
 
-    def add_table(self, shifts: list[Shift],
-                  employees: dict[str, Employee]) -> None:
+    def add_table(self, shifts: list[Shift], employees: dict[str, Employee]) -> None:
         """Добавляет таблицу смен и заполняет строки для экспорта в CSV."""
-        self.lines.append(f"{'Сотрудник':22} {'Дата':11} {'Начало':7} {'Конец':7} {'Часы':6}")
+        self.lines.append(
+            f"{'Сотрудник':22} {'Дата':11} {'Начало':7} {'Конец':7} {'Часы':6}"
+        )
         for shift in shifts:
             employee = employees.get(shift.employee_id)
             name = employee.full_name if employee else "?"
             hours = shift.duration_hours
-            self.rows.append(ReportRow(
-                                employee=name, shift_date=shift.shift_date,
-                                time_start=shift.time_start, time_end=shift.time_end,
-                                hours=hours, description=shift.description
-                            ))
+            self.rows.append(
+                ReportRow(
+                    employee=name,
+                    shift_date=shift.shift_date,
+                    time_start=shift.time_start,
+                    time_end=shift.time_end,
+                    hours=hours,
+                    description=shift.description,
+                )
+            )
             self.lines.append(
                 f"{name:22} {str(shift.shift_date):11} {str(shift.time_start):7} "
                 f"{str(shift.time_end):7} {hours:<6}"
@@ -46,6 +52,9 @@ class ReportBuilder:
 
     def build(self) -> Report:
         """Собирает готовый отчёт из накопленных частей."""
-        return Report(text="\n".join(self.lines), rows=self.rows,
-                  total_shifts=self.total_shifts,
-                  total_hours=self.total_hours)
+        return Report(
+            text="\n".join(self.lines),
+            rows=self.rows,
+            total_shifts=self.total_shifts,
+            total_hours=self.total_hours,
+        )

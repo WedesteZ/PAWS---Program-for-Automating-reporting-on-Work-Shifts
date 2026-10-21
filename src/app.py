@@ -1,9 +1,9 @@
 from datetime import date, time
 
 from src.db import Storage
+from src.export import get_exporter
 from src.models import Employee, Report, Shift
 from src.report import ReportBuilder
-from src.export import get_exporter
 from src.validation import validate_shift
 
 
@@ -22,15 +22,26 @@ class PawsApp:
         """Возвращает список всех сотрудников."""
         return list(self.storage.employees.values())
 
-    def add_shift(self, employee_id: str, shift_date: date,
-                  start: time, end: time, description: str = "") -> Shift:
+    def add_shift(
+        self,
+        employee_id: str,
+        shift_date: date,
+        start: time,
+        end: time,
+        description: str = "",
+    ) -> Shift:
         """Создаёт новую смену после проверки корректности.
 
         Raises:
             ValueError: если смена не прошла валидацию.
         """
-        shift = Shift(employee_id=employee_id, shift_date=shift_date,
-                      time_start=start, time_end=end, description=description)
+        shift = Shift(
+            employee_id=employee_id,
+            shift_date=shift_date,
+            time_start=start,
+            time_end=end,
+            description=description,
+        )
         errors = validate_shift(shift, self.storage)
         if errors:
             raise ValueError("; ".join(errors))
@@ -43,14 +54,16 @@ class PawsApp:
             shifts = [s for s in shifts if s.employee_id == employee_id]
         return sorted(shifts, key=lambda s: (s.shift_date, s.time_start))
 
-    def generate_report(self, date_from: date, date_to: date,
-                         employee_id: str | None = None) -> Report:
+    def generate_report(
+        self, date_from: date, date_to: date, employee_id: str | None = None
+    ) -> Report:
         """Формирует отчёт по сменам за период (по одному или всем сотрудникам).
 
         Возвращает объект отчёта.
         """
         shifts = [
-            s for s in self.storage.shifts.values()
+            s
+            for s in self.storage.shifts.values()
             if date_from <= s.shift_date <= date_to
             and (employee_id is None or s.employee_id == employee_id)
         ]
@@ -58,7 +71,10 @@ class PawsApp:
 
         if employee_id is not None:
             employee = self.storage.employees.get(employee_id)
-            title = f"Отчёт по сотруднику: {employee.full_name if employee else employee_id}"
+            name = employee.full_name if employee else employee_id
+            title = f"Отчёт по сотруднику: {name}"
+            if employee_id is not None:
+                title = f"Отчёт по сотруднику: {name}"
         else:
             title = "Сводный отчёт по всем сотрудникам"
 
