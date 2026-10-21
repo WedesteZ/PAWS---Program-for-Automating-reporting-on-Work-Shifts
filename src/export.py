@@ -1,14 +1,15 @@
 import csv
+from abc import ABC, abstractmethod
 
 from src.models import Report
 
 
-class Exporter:
-    """Базовый класс экспорта отчёта в файл."""
+class Exporter(ABC):
+    """Абстрактный класс экспорта отчёта в файл."""
 
+    @abstractmethod
     def export(self, report: Report, filename: str) -> str:
         """Сохраняет отчёт в файл. Возвращает имя файла."""
-        raise NotImplementedError
 
 
 class TxtExporter(Exporter):
@@ -38,9 +39,18 @@ class CsvExporter(Exporter):
         return filename
 
 
+EXPORTERS: dict[str, type[Exporter]] = {
+    "txt": TxtExporter,
+    "csv": CsvExporter,
+}
+
 def get_exporter(fmt: str) -> Exporter:
-    """Возвращает экспортёр для формата fmt (по умолчанию — TXT)."""
-    fmt = fmt.strip().lower()
-    if fmt == "csv":
-        return CsvExporter()
-    return TxtExporter()
+    """Возвращает экспортёр для формата fmt.
+
+    Raises:
+        ValueError: если такого формата нет среди EXPORTERS.
+    """
+    exporter_class = EXPORTERS.get(fmt.strip().lower())
+    if exporter_class is None:
+        raise ValueError(f"Неизвестный формат отчёта: {fmt}")
+    return exporter_class()
