@@ -17,17 +17,17 @@ uv run paws
 
 Архитектура описана моделью C4.
 
-![C1 — контекст](docs/img/C1.png)
+![C1 — контекст](docs/imgs/C1.png)
 
-![C2 — контейнеры](docs/img/C2.png)
+![C2 — контейнеры](docs/imgs/C2.png)
 
-![C3 — компоненты](docs/img/C3.png)
+![C3 — компоненты](docs/imgs/C3.png)
 
 ## База данных
 
 Данные хранятся в PostgreSQL. Схема состоит из семи таблиц.
 
-![ER-диаграмма](docs/img/erd.png)
+![ER-диаграмма](docs/imgs/ERD.png)
 
 | Таблица | Назначение |
 |---|---|
