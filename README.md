@@ -17,11 +17,11 @@ uv run paws
 
 Архитектура описана моделью C4.
 
-![C1 — контекст](docs/img/c4_c1.png)
+![C1 — контекст](docs/img/C1.png)
 
-![C2 — контейнеры](docs/img/c4_c2.png)
+![C2 — контейнеры](docs/img/C2.png)
 
-![C3 — компоненты](docs/img/c4_c3.png)
+![C3 — компоненты](docs/img/C3.png)
 
 ## База данных
 
