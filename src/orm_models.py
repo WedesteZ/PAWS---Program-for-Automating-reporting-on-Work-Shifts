@@ -1,10 +1,10 @@
+import uuid
 from datetime import date, datetime
 
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
-    Identity,
     Index,
     String,
     func,
@@ -26,8 +26,12 @@ class CompletedWorkOrm(Base):
         Index("completed_works_shift_idx", "shift_id"),
     )
 
-    id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
-    shift_id: Mapped[int] = mapped_column(
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=func.gen_random_uuid(),
+    )
+    shift_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("shifts.id", ondelete="CASCADE")
     )
     description: Mapped[str] = mapped_column(String(500))
@@ -45,7 +49,11 @@ class EmployeeOrm(Base):
         CheckConstraint("full_name <> ''", name="employees_name_check"),
     )
 
-    id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=func.gen_random_uuid(),
+    )
     full_name: Mapped[str] = mapped_column(String(150))
     position: Mapped[str] = mapped_column(String(50))
     department: Mapped[str | None] = mapped_column(String(100))
@@ -68,10 +76,10 @@ class ReportEmployeeOrm(Base):
         Index("report_employees_employee_idx", "employee_id"),
     )
 
-    report_id: Mapped[int] = mapped_column(
+    report_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("reports.id", ondelete="CASCADE"), primary_key=True
     )
-    employee_id: Mapped[int] = mapped_column(
+    employee_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("employees.id", ondelete="RESTRICT"), primary_key=True
     )
 
@@ -95,7 +103,11 @@ class ReportOrm(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=func.gen_random_uuid(),
+    )
     report_type: Mapped[str] = mapped_column(String(20))
     date_from: Mapped[date]
     date_to: Mapped[date]
@@ -104,7 +116,7 @@ class ReportOrm(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    created_by: Mapped[int] = mapped_column(
+    created_by: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT")
     )
 
@@ -140,8 +152,12 @@ class ShiftOrm(Base):
         Index("shifts_employee_start_idx", "employee_id", "start_at"),
     )
 
-    id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
-    employee_id: Mapped[int] = mapped_column(
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=func.gen_random_uuid(),
+    )
+    employee_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("employees.id", ondelete="RESTRICT")
     )
     start_at: Mapped[datetime]
@@ -172,11 +188,15 @@ class UserOrm(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(Identity(always=True), primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=func.gen_random_uuid(),
+    )
     login: Mapped[str] = mapped_column(String(30), unique=True)
     password_hash: Mapped[str] = mapped_column(String(128))
     user_role: Mapped[str] = mapped_column(String(20))
-    employee_id: Mapped[int] = mapped_column(
+    employee_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("employees.id", ondelete="RESTRICT"),
         unique=True,
     )
