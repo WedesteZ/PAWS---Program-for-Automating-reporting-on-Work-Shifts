@@ -25,7 +25,13 @@ docker compose up --build -d
 docker compose ps
 ```
 
-4. Запустите программу:
+4. Создайте таблицы в базе данных, применив миграции:
+
+```bash
+uv run alembic upgrade head
+```
+
+5. Запустите программу:
 
 ```bash
 uv run paws

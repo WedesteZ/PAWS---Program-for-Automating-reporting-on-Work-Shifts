@@ -1,3 +1,5 @@
+"""Подключение к базе данных PostgreSQL."""
+
 import os
 
 from dotenv import load_dotenv
