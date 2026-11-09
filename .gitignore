@@ -19,3 +19,6 @@ db/
 
 # Tools
 .ruff_cache/
+
+# Secrets
+*.env
