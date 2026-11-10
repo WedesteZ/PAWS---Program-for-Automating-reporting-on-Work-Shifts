@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% if error %}
+<div class="error-msg" style="color: #721c24; background: #f8d7da; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb; margin-bottom: 20px;">
+    {{ error }}
+</div>
+{% endif %}
     <h2>Справочник сотрудников</h2>
     <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
 
