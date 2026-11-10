@@ -43,7 +43,12 @@ class User:
     password_hash: str
     employee_id: uuid.UUID
     role: Role
+    active: bool = True
     id: uuid.UUID = field(default_factory=uuid.uuid4)
+
+    def deactivate(self) -> None:
+        """Блокирует учётную запись пользователя."""
+        self.active = False
 
 
 class ShiftStatus(Enum):
