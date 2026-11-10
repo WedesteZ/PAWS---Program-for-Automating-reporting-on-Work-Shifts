@@ -1,10 +1,11 @@
 import uuid
+from datetime import date, datetime, time, timedelta
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from src.models import Employee, Role, User
-from src.orm_models import EmployeeOrm, UserOrm
+from src.models import CompletedWork, Employee, Role, Shift, ShiftStatus, User
+from src.orm_models import CompletedWorkOrm, EmployeeOrm, ShiftOrm, UserOrm
 
 
 def employee_to_domain(row: EmployeeOrm) -> Employee:
@@ -102,3 +103,101 @@ class UserRepository:
         """Возвращает всех пользователей, отсортированных по логину."""
         rows = self.session.scalars(select(UserOrm).order_by(UserOrm.login))
         return [user_to_domain(row) for row in rows]
+
+
+def work_to_domain(row: CompletedWorkOrm) -> CompletedWork:
+    """Преобразует строку БД в объект CompletedWork."""
+    return CompletedWork(
+        description=row.description,
+        work_date=row.work_date,
+        details=row.details,
+        id=row.id,
+    )
+
+
+def shift_to_domain(row: ShiftOrm) -> Shift:
+    """Преобразует строку БД в объект Shift вместе с выполненными работами."""
+    return Shift(
+        employee_id=row.employee_id,
+        start_at=row.start_at,
+        end_at=row.end_at,
+        note=row.note,
+        status=ShiftStatus(row.status),
+        works=[work_to_domain(work) for work in row.works],
+        id=row.id,
+    )
+
+
+class ShiftRepository:
+    """Доступ к сменам и выполненным работам в базе данных."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def add(self, shift: Shift) -> Shift:
+        """Сохраняет смену вместе с работами и возвращает её."""
+        row = ShiftOrm(
+            id=shift.id,
+            employee_id=shift.employee_id,
+            start_at=shift.start_at,
+            end_at=shift.end_at,
+            status=shift.status.value,
+            note=shift.note,
+            works=[
+                CompletedWorkOrm(
+                    id=work.id,
+                    description=work.description,
+                    work_date=work.work_date,
+                    details=work.details,
+                )
+                for work in shift.works
+            ],
+        )
+        self.session.add(row)
+        self.session.flush()
+        return shift_to_domain(row)
+
+    def list_all(self, employee_id: uuid.UUID | None = None) -> list[Shift]:
+        """Возвращает смены (всех или одного сотрудника) по времени начала."""
+        query = (
+            select(ShiftOrm)
+            .options(selectinload(ShiftOrm.works))
+            .order_by(ShiftOrm.start_at)
+        )
+        if employee_id is not None:
+            query = query.where(ShiftOrm.employee_id == employee_id)
+        return [shift_to_domain(row) for row in self.session.scalars(query)]
+
+    def list_between(
+        self,
+        date_from: date,
+        date_to: date,
+        employee_id: uuid.UUID | None = None,
+    ) -> list[Shift]:
+        """Возвращает смены, начавшиеся в периоде (границы включаются)."""
+        period_start = datetime.combine(date_from, time.min)
+        period_end = datetime.combine(date_to, time.min) + timedelta(days=1)
+        query = (
+            select(ShiftOrm)
+            .options(selectinload(ShiftOrm.works))
+            .where(ShiftOrm.start_at >= period_start, ShiftOrm.start_at < period_end)
+            .order_by(ShiftOrm.start_at)
+        )
+        if employee_id is not None:
+            query = query.where(ShiftOrm.employee_id == employee_id)
+        return [shift_to_domain(row) for row in self.session.scalars(query)]
+
+    def find_overlapping(
+        self, employee_id: uuid.UUID, start_at: datetime, end_at: datetime
+    ) -> list[Shift]:
+        """Возвращает смены сотрудника, пересекающиеся с заданным интервалом."""
+        query = (
+            select(ShiftOrm)
+            .options(selectinload(ShiftOrm.works))
+            .where(
+                ShiftOrm.employee_id == employee_id,
+                ShiftOrm.start_at < end_at,
+                ShiftOrm.end_at > start_at,
+            )
+        )
+        return [shift_to_domain(row) for row in self.session.scalars(query)]

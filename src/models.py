@@ -55,29 +55,76 @@ class ShiftStatus(Enum):
 
 
 @dataclass
+class CompletedWork:
+    """Выполненная работа в рамках смены."""
+
+    description: str
+    work_date: date | None = None
+    details: str | None = None
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+
+
+@dataclass
 class Shift:
     """Рабочая смена сотрудника.
 
-    Ночные смены (окончание раньше начала) считаются переходящими
-    на следующие сутки.
+    Смена хранится как интервал: ночная смена заканчивается на следующие сутки.
     """
 
-    employee_id: str
-    shift_date: date
-    time_start: time
-    time_end: time
-    description: str = ""
+    employee_id: uuid.UUID
+    start_at: datetime
+    end_at: datetime
+    note: str | None = None
     status: ShiftStatus = ShiftStatus.DRAFT
-    id: str = field(default_factory=new_id)
+    works: list[CompletedWork] = field(default_factory=list)
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+
+    @classmethod
+    def from_times(
+        cls,
+        employee_id: uuid.UUID,
+        shift_date: date,
+        start: time,
+        end: time,
+        description: str = "",
+    ) -> "Shift":
+        """Создаёт смену по дате и времени начала и окончания.
+
+        Если окончание раньше начала, смена переходит на следующие сутки.
+        """
+        start_at = datetime.combine(shift_date, start)
+        end_at = datetime.combine(shift_date, end)
+        if end_at < start_at:
+            end_at += timedelta(days=1)
+        works = []
+        if description:
+            works.append(CompletedWork(description, work_date=shift_date))
+        return cls(employee_id, start_at, end_at, works=works)
+
+    @property
+    def shift_date(self) -> date:
+        """Дата начала смены."""
+        return self.start_at.date()
+
+    @property
+    def time_start(self) -> time:
+        """Время начала смены."""
+        return self.start_at.time()
+
+    @property
+    def time_end(self) -> time:
+        """Время окончания смены."""
+        return self.end_at.time()
+
+    @property
+    def description(self) -> str:
+        """Описание выполненных работ одной строкой."""
+        return "; ".join(work.description for work in self.works)
 
     @property
     def duration_hours(self) -> float:
         """Длительность смены в часах (округление до 2 знаков)."""
-        start_dt = datetime.combine(self.shift_date, self.time_start)
-        end_dt = datetime.combine(self.shift_date, self.time_end)
-        if end_dt <= start_dt:
-            end_dt = end_dt + timedelta(days=1)
-        return round((end_dt - start_dt).total_seconds() / 3600, 2)
+        return round((self.end_at - self.start_at).total_seconds() / 3600, 2)
 
 
 @dataclass(frozen=True)
