@@ -264,13 +264,11 @@ async def generate_report(
         )
 
     except ValueError as e:
-        # Показываем только понятные ошибки валидации
         error_msg = urllib.parse.quote(str(e))
         return RedirectResponse(
             url=f"/reports?error={error_msg}", status_code=status.HTTP_302_FOUND
         )
     except Exception:
-        # B10: Скрываем системные сбои (500) от пользователя
         error_msg = urllib.parse.quote("Произошла системная ошибка при генерации отчета.")
         return RedirectResponse(
             url=f"/reports?error={error_msg}", status_code=status.HTTP_302_FOUND

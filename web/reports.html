@@ -1,76 +1,90 @@
 {% extends "base.html" %}
-{% if error %}
-    <div class="error-msg">{{ error }}</div>
-{% endif %}
-{% block content %}
-    <h2>Генерация отчетов</h2>
-    <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
 
-    <div style="background: #f9f9f9; padding: 20px; border-radius: 6px; margin-bottom: 30px; border: 1px solid #e1e1e1;">
-        <form method="POST" action="/reports/generate">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div class="form-group">
-                    <label>Дата с:</label>
-                    <input type="date" name="date_from" required>
-                </div>
-                <div class="form-group">
-                    <label>Дата по:</label>
-                    <input type="date" name="date_to" required>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Сотрудник (опционально, для индивидуального отчета):</label>
-                <select name="employee_id">
-                    <option value="">Все сотрудники (сводный отчет)</option>
-                    {% for emp in employees %}
-                        <option value="{{ emp.id }}">{{ emp.full_name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Формат экспортного файла (если нужно скачать):</label>
-                <select name="export_format">
-                    <option value="">-- Только просмотр на сайте --</option>
-                    <option value="csv">CSV</option>
-                    <option value="xlsx">Excel (.xlsx)</option>
-                    <option value="pdf">PDF</option>
-                    <option value="json">JSON</option>
-                </select>
-            </div>
-            <button type="submit" class="btn" style="background: #9b59b6;">Сформировать / Скачать отчет</button>
-        </form>
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Отчеты</h1>
+</div>
+
+{% if error %}
+<div class="alert alert-danger" role="alert">
+    {{ error }}
+</div>
+{% endif %}
+
+<form method="post" action="/reports/generate" class="mb-4">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">С даты</label>
+            <input type="date" name="date_from" class="form-control" value="{{ date_from }}" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">По дату</label>
+            <input type="date" name="date_to" class="form-control" value="{{ date_to }}" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Сотрудник</label>
+            <select name="employee_id" class="form-select">
+                <option value="">Все сотрудники</option>
+                {% for emp in employees %}
+                <option value="{{ emp.id }}" {% if str(emp.id) == selected_employee %}selected{% endif %}>{{ emp.full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Формат экспорта</label>
+            <select name="export_format" class="form-select">
+                <option value="">Не экспортировать (на экран)</option>
+                <option value="txt">Текстовый файл (TXT)</option>
+                <option value="csv">Таблица (CSV)</option>
+                <option value="json">Данные (JSON)</option>
+                <option value="xlsx">Excel (XLSX)</option>
+                <option value="pdf">Документ (PDF)</option>
+            </select>
+        </div>
+        <div class="col-12 mt-3">
+            <button type="submit" class="btn btn-primary">Сформировать</button>
+        </div>
+    </div>
+</form>
+
+{% if report %}
+<div class="mt-4">
+    <!-- Заголовок берется из первой строки report.text -->
+    <h3>{{ report.text.split('\n')[0] }}</h3>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-sm mt-3">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Сотрудник</th>
+                    <th>Начало</th>
+                    <th>Конец</th>
+                    <th>Часы</th>
+                    <th>Описание</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in report.rows %}
+                <tr>
+                    <td>{{ row.shift_date }}</td>
+                    <!-- Ограничение ширины для длинных имен -->
+                    <td style="word-wrap: break-word; max-width: 150px;">{{ row.employee }}</td>
+                    <!-- Форматирование времени без секунд -->
+                    <td>{{ row.time_start.strftime('%H:%M') }}</td>
+                    <td>{{ row.time_end.strftime('%H:%M') }}</td>
+                    <td>{{ row.hours }}</td>
+                    <td style="word-wrap: break-word; max-width: 150px;">{{ row.description }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
-    <!-- Если отчет был сформирован и запрошен просмотр -->
-    {% if report %}
-        <div style="background: #fff; border: 2px solid #2c3e50; padding: 20px; border-radius: 6px; margin-top: 20px;">
-            <h3>{{ report.title }}</h3>
-            <p style="color: #666;">Период: с {{ date_from }} по {{ date_to }}</p>
+    <div class="mt-3">
+        <strong>Итого часов: {{ report.total_hours }}</strong>
+    </div>
+</div>
+{% endif %}
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Дата</th>
-                        <th>Сотрудник</th>
-                        <th>Время</th>
-                        <th>Часы</th>
-                        <th>Описание</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in report.rows %}
-                    <tr>
-                        <td>{{ row.date }}</td>
-                        <td>{{ row.employee_name }}</td>
-                        <td>{{ row.time_start }} - {{ row.time_end }}</td>
-                        <td>{{ row.hours }}</td>
-                        <td>{{ row.description }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-
-            <h4 style="margin-top: 20px;">Итого часов: {{ report.total_hours }}</h4>
-        </div>
-    {% endif %}
 {% endblock %}
