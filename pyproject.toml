@@ -11,6 +11,12 @@ dependencies = [
     "pydantic>=2.14.1",
     "python-dotenv>=1.2.4",
     "sqlalchemy>=2.1.5",
+    "fastapi",
+    "uvicorn",
+    "jinja2",
+    "python-multipart",
+    "openpyxl",
+    "reportlab"
 ]
 
 [project.scripts]
