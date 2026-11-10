@@ -1,14 +1,14 @@
 """Главный модуль веб-интерфейса PAWS."""
 import os
 import urllib.parse
-import uvicorn
-from uuid import UUID
 from datetime import date, time
+from uuid import UUID
 
-from fastapi import FastAPI, Request, Form, status, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
-from fastapi.templating import Jinja2Templates
+import uvicorn
+from fastapi import Depends, FastAPI, Form, Request, status
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from src.app import PawsApp

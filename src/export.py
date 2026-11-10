@@ -1,24 +1,21 @@
-"""Модуль для экспорта отчетов в различные форматы."""
 import csv
 import json
-from pathlib import Path
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 import openpyxl
 from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
 
 from src.models import Report
 
 
 class Exporter(ABC):
-    """Базовый абстрактный класс экспортёра."""
 
     @abstractmethod
     def export(self, report: Report, filename: str) -> str:
-        """Экспортирует отчет в файл."""
         pass
 
 
