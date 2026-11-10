@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% if error %}
+    <div class="error-msg">{{ error }}</div>
+{% endif %}
+{% block content %}
+    <h2>Генерация отчетов</h2>
+    <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
+
+    <div style="background: #f9f9f9; padding: 20px; border-radius: 6px; margin-bottom: 30px; border: 1px solid #e1e1e1;">
+        <form method="POST" action="/reports/generate">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Дата с:</label>
+                    <input type="date" name="date_from" required>
+                </div>
+                <div class="form-group">
+                    <label>Дата по:</label>
+                    <input type="date" name="date_to" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Сотрудник (опционально, для индивидуального отчета):</label>
+                <select name="employee_id">
+                    <option value="">Все сотрудники (сводный отчет)</option>
+                    {% for emp in employees %}
+                        <option value="{{ emp.id }}">{{ emp.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Формат экспортного файла (если нужно скачать):</label>
+                <select name="export_format">
+                    <option value="">-- Только просмотр на сайте --</option>
+                    <option value="csv">CSV</option>
+                    <option value="xlsx">Excel (.xlsx)</option>
+                    <option value="pdf">PDF</option>
+                    <option value="json">JSON</option>
+                </select>
+            </div>
+            <button type="submit" class="btn" style="background: #9b59b6;">Сформировать / Скачать отчет</button>
+        </form>
+    </div>
+
+    <!-- Если отчет был сформирован и запрошен просмотр -->
+    {% if report %}
+        <div style="background: #fff; border: 2px solid #2c3e50; padding: 20px; border-radius: 6px; margin-top: 20px;">
+            <h3>{{ report.title }}</h3>
+            <p style="color: #666;">Период: с {{ date_from }} по {{ date_to }}</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Сотрудник</th>
+                        <th>Время</th>
+                        <th>Часы</th>
+                        <th>Описание</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report.rows %}
+                    <tr>
+                        <td>{{ row.date }}</td>
+                        <td>{{ row.employee_name }}</td>
+                        <td>{{ row.time_start }} - {{ row.time_end }}</td>
+                        <td>{{ row.hours }}</td>
+                        <td>{{ row.description }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <h4 style="margin-top: 20px;">Итого часов: {{ report.total_hours }}</h4>
+        </div>
+    {% endif %}
+{% endblock %}
