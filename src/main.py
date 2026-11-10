@@ -1,19 +1,207 @@
+import uvicorn
+from uuid import UUID
+from datetime import date, time
+from fastapi import FastAPI, Request, Form, status, Response, Depends
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
+
 from src.app import PawsApp
 from src.auth import AuthManager
-from src.cli.menus import run_auth_menu, run_main_menu
 from src.demo import seed_demo_data
 
+# Инициализация ядра PAWS
+paws_core = PawsApp()
+auth_manager = AuthManager(paws_core.storage)
+seed_demo_data(paws_core, auth_manager)
 
-def main() -> None:
-    """Собирает зависимости и запускает консольный интерфейс."""
-    app = PawsApp()
-    auth = AuthManager()
-    seed_demo_data(app, auth)
+app = FastAPI(title="PAWS Web")
 
-    user = run_auth_menu(auth)
-    if user is not None:
-        run_main_menu(app, auth)
+# Подключаем шифрование сессий
+app.add_middleware(SessionMiddleware, secret_key="super-secret-paws-key")
+
+app.mount("/static", StaticFiles(directory="web"), name="static")
+templates = Jinja2Templates(directory="web")
+
+
+def get_current_user(request: Request):
+    """Читаем пользователя из зашифрованной сессии."""
+    return request.session.get("user")
+
+
+# --- АВТОРИЗАЦИЯ ---
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse(request=request, name="login.html", context={"title": "Вход в PAWS"})
+
+
+@app.post("/login")
+async def login_post(request: Request, username: str = Form(...), password: str = Form(...)):
+    try:
+        user = auth_manager.login(username, password)
+        request.session["user"] = getattr(user, "username", str(user))
+        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    except ValueError as e:
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"title": "Вход в PAWS", "error": str(e)}
+        )
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+
+# --- ДАШБОРД И СМЕНЫ ---
+
+@app.get("/", response_class=HTMLResponse)
+async def dashboard(
+        request: Request,
+        employee_id: UUID | None = None,
+        error: str | None = None,
+        current_user: str = Depends(get_current_user)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    shifts = paws_core.list_shifts(employee_id=employee_id)
+    employees = paws_core.list_employees()
+
+    context = {
+        "title": "PAWS - Управление сменами",
+        "username": current_user,
+        "shifts": shifts,
+        "employees": employees,
+        "selected_employee": str(employee_id) if employee_id else "",
+        "error": error
+    }
+    return templates.TemplateResponse(request=request, name="index.html", context=context)
+
+
+@app.post("/shifts/add")
+async def add_shift(
+        request: Request,
+        employee_id: UUID = Form(...),
+        shift_date: str = Form(...),
+        time_start: str = Form(...),
+        time_end: str = Form(...),
+        description: str = Form(""),
+        current_user: str = Depends(get_current_user)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    try:
+        s_date = date.fromisoformat(shift_date)
+        s_start = time.fromisoformat(time_start)
+        s_end = time.fromisoformat(time_end)
+
+        paws_core.add_shift(
+            employee_id=employee_id,
+            shift_date=s_date,
+            start=s_start,
+            end=s_end,
+            description=description
+        )
+    except ValueError as e:
+        return RedirectResponse(url=f"/?error={str(e)}", status_code=status.HTTP_302_FOUND)
+
+    return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+
+
+# --- СОТРУДНИКИ ---
+
+@app.get("/employees", response_class=HTMLResponse)
+async def employees_page(request: Request, current_user: str = Depends(get_current_user)):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    employees = paws_core.list_employees()
+    context = {
+        "title": "PAWS - Сотрудники",
+        "username": current_user,
+        "employees": employees
+    }
+    return templates.TemplateResponse(request=request, name="employees.html", context=context)
+
+
+@app.post("/employees/add")
+async def add_employee(
+        full_name: str = Form(...),
+        position: str = Form(""),
+        current_user: str = Depends(get_current_user)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    paws_core.add_employee(full_name=full_name, position=position)
+    return RedirectResponse(url="/employees", status_code=status.HTTP_302_FOUND)
+
+
+# --- ОТЧЕТЫ ---
+
+@app.get("/reports", response_class=HTMLResponse)
+async def reports_page(
+        request: Request,
+        error: str | None = None,
+        current_user: str = Depends(get_current_user)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    employees = paws_core.list_employees()
+    context = {
+        "title": "PAWS - Отчеты",
+        "username": current_user,
+        "employees": employees,
+        "error": error
+    }
+    return templates.TemplateResponse(request=request, name="reports.html", context=context)
+
+
+@app.post("/reports/generate")
+async def generate_report(
+        request: Request,
+        date_from: str = Form(...),
+        date_to: str = Form(...),
+        employee_id: UUID | None = Form(None),
+        export_format: str = Form(""),
+        current_user: str = Depends(get_current_user)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    employees = paws_core.list_employees()
+
+    try:
+        d_from = date.fromisoformat(date_from)
+        d_to = date.fromisoformat(date_to)
+
+        report = paws_core.generate_report(date_from=d_from, date_to=d_to, employee_id=employee_id)
+
+        if export_format:
+            filename = f"report_{date_from}_{date_to}.{export_format}"
+            paws_core.export_report(report, fmt=export_format, filename=filename)
+            return FileResponse(filename, filename=filename, media_type='application/octet-stream')
+
+        context = {
+            "title": "PAWS - Результат отчета",
+            "username": current_user,
+            "employees": employees,
+            "report": report,
+            "date_from": date_from,
+            "date_to": date_to
+        }
+        return templates.TemplateResponse(request=request, name="reports.html", context=context)
+
+    except Exception as e:
+        return RedirectResponse(url=f"/reports?error={str(e)}", status_code=status.HTTP_302_FOUND)
 
 
 if __name__ == "__main__":
-    main()
+    uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
