@@ -4,6 +4,7 @@ from src.cli.prompts import (
     read_date,
     read_employee_id,
     read_full_name,
+    read_optional_employee_id,
     read_password,
     read_period,
     read_position,
@@ -33,43 +34,37 @@ def handle_login(auth: AuthManager) -> User | None:
     return None
 
 
-def handle_show_passwords(auth: AuthManager) -> None:
-    """Выводит список пользователей с их паролями и ролями."""
-    users = auth.list_users()
-    if not users:
-        print("Пользователей нет")
-    for u in users:
-        print(f"  {u.username:12} пароль={u.password:12} роль={u.role.value}")
-
-
 def handle_add_employee(app: PawsApp) -> None:
     """Запрашивает данные и добавляет сотрудника."""
     name = read_full_name("ФИО сотрудника: ")
     position = read_position("Должность: ")
     employee = app.add_employee(name, position)
-    print(f"Добавлен сотрудник: {employee.full_name} (id={employee.id})")
+    print(f"Добавлен сотрудник: {employee.full_name}")
 
 
 def handle_list_employees(app: PawsApp) -> None:
     """Выводит список сотрудников."""
-    for e in app.list_employees():
-        print(f"  id={e.id}: {e.full_name} ({e.position})")
+    employees = app.list_employees()
+    if not employees:
+        print("Сотрудников нет")
+    for number, e in enumerate(employees, start=1):
+        print(f"  {number}. {e.full_name} ({e.position})")
 
 
 def handle_add_shift(app: PawsApp) -> None:
     """Запрашивает данные и добавляет рабочую смену."""
-    employee_id = read_employee_id("ID сотрудника: ", app.storage)
+    employee_id = read_employee_id("Номер сотрудника: ", app.list_employees())
     shift_date = read_date("Дата смены (ГГГГ-ММ-ДД): ")
     start = read_time("Начало (ЧЧ:ММ): ")
     end = read_time("Окончание (ЧЧ:ММ): ")
     description = input("Описание выполненных работ: ").strip()
     shift = app.add_shift(employee_id, shift_date, start, end, description)
-    print(f"Смена добавлена (id={shift.id}, {shift.duration_hours} ч.)")
+    print(f"Смена добавлена ({shift.duration_hours} ч.)")
 
 
 def handle_list_shifts(app: PawsApp) -> None:
     """Выводит смены выбранного сотрудника."""
-    employee_id = read_employee_id("ID сотрудника: ", app.storage)
+    employee_id = read_employee_id("Номер сотрудника: ", app.list_employees())
     shifts = app.list_shifts(employee_id)
     if not shifts:
         print("Смен не найдено")
@@ -83,8 +78,8 @@ def handle_list_shifts(app: PawsApp) -> None:
 def handle_report(app: PawsApp) -> None:
     """Формирует отчёт за период, выводит его и сохраняет в файл."""
     date_from, date_to = read_period()
-    employee_id = read_employee_id(
-        "ID сотрудника (пусто - по всем): ", app.storage, allow_empty=True
+    employee_id = read_optional_employee_id(
+        "Номер сотрудника (пусто - по всем): ", app.list_employees()
     )
     report = app.generate_report(date_from, date_to, employee_id)
     print(report.text)
@@ -98,12 +93,10 @@ def handle_add_user(app: PawsApp, auth: AuthManager) -> None:
     """Запрашивает данные и добавляет пользователя системы."""
     username = read_username("Имя пользователя: ")
     password = read_password("Пароль: ")
-    employee_id = read_employee_id("ID сотрудника: ", app.storage)
+    employee_id = read_employee_id("Номер сотрудника: ", app.list_employees())
     role = read_role("Роль")
     user = auth.add_user(username, password, employee_id, role)
-    print(
-        f"Пользователь добавлен: {user.username} (роль={user.role.value}, id={user.id})"
-    )
+    print(f"Пользователь добавлен: {user.username} (роль={user.role.value})")
 
 
 def handle_list_users(app: PawsApp, auth: AuthManager) -> None:
@@ -111,7 +104,8 @@ def handle_list_users(app: PawsApp, auth: AuthManager) -> None:
     users = auth.list_users()
     if not users:
         print("Пользователей нет")
+    employees = {e.id: e for e in app.list_employees()}
     for u in users:
-        employee = app.storage.employees.get(u.employee_id)
+        employee = employees.get(u.employee_id)
         name = employee.full_name if employee else "?"
-        print(f"  {u.username:15} роль={u.role.value:8} сотрудник={name} (id={u.id})")
+        print(f"  {u.username:15} роль={u.role.value:8} сотрудник={name}")

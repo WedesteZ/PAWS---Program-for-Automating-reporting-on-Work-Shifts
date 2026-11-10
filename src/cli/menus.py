@@ -11,14 +11,12 @@ from src.cli.handlers import (
     handle_list_users,
     handle_login,
     handle_report,
-    handle_show_passwords,
 )
 from src.models import User
 
 AUTH_MENU = """
 ==== PAWS - авторизация ====
 1. Авторизоваться
-2. Вывод паролей пользователей
 0. Выход
 Выберите пункт: """
 
@@ -40,7 +38,6 @@ class AuthMenuChoice(IntEnum):
 
     EXIT = 0
     LOGIN = 1
-    SHOW_PASSWORDS = 2
 
 
 class MainMenuChoice(IntEnum):
@@ -79,8 +76,6 @@ def run_auth_menu(auth: AuthManager) -> User | None:
                 user = handle_login(auth)
                 if user is not None:
                     return user
-            case AuthMenuChoice.SHOW_PASSWORDS:
-                handle_show_passwords(auth)
             case AuthMenuChoice.EXIT:
                 print("До свидания!")
                 return None

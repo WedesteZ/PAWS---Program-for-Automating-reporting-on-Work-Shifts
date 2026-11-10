@@ -1,7 +1,8 @@
 import re
+import uuid
 
-from src.db import Storage
 from src.models import Shift
+from src.repositories import EmployeeRepository, ShiftRepository, UserRepository
 
 NAME_PATTERN = re.compile(r"^[А-Яа-яЁёA-Za-z\- ]+$")
 USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.\-]{3,30}$")
@@ -68,46 +69,50 @@ def validate_password(password: str) -> list[str]:
     return errors
 
 
-def validate_shift(shift: Shift, storage: Storage) -> list[str]:
+def validate_shift(
+    shift: Shift, employees: EmployeeRepository, shifts: ShiftRepository
+) -> list[str]:
     """Проверяет смену на корректность. Возвращает список ошибок."""
     errors = []
 
-    if shift.employee_id not in storage.employees:
+    if employees.get(shift.employee_id) is None:
         errors.append("Сотрудник с таким ID не найден")
 
-    if shift.time_start == shift.time_end:
+    if shift.start_at == shift.end_at:
         errors.append("Время начала и окончания смены совпадает")
 
     if shift.duration_hours > 24:
         errors.append("Смена не может длиться больше 24 часов")
 
-    for other in storage.shifts.values():
-        if (
-            other.employee_id == shift.employee_id
-            and other.shift_date == shift.shift_date
-        ):
-            errors.append(
-                f"У сотрудника уже есть смена {other.shift_date} "
-                f"({other.time_start}-{other.time_end})"
-            )
+    for other in shifts.find_overlapping(
+        shift.employee_id, shift.start_at, shift.end_at
+    ):
+        errors.append(
+            f"Смена пересекается с другой сменой сотрудника: "
+            f"{other.start_at:%Y-%m-%d %H:%M} - {other.end_at:%Y-%m-%d %H:%M}"
+        )
 
     return errors
 
 
 def validate_user(
-    username: str, password: str, employee_id: str, storage: Storage
+    username: str,
+    password: str,
+    employee_id: uuid.UUID,
+    users: UserRepository,
+    employees: EmployeeRepository,
 ) -> list[str]:
     """Проверяет данные нового пользователя. Возвращает список ошибок."""
     errors = validate_username(username)
 
-    if username in storage.users:
+    if users.get_by_username(username) is not None:
         errors.append("Пользователь с таким именем уже существует")
 
     errors += validate_password(password)
 
-    if employee_id not in storage.employees:
+    if employees.get(employee_id) is None:
         errors.append("Сотрудник с таким ID не найден")
-    elif any(u.employee_id == employee_id for u in storage.users.values()):
+    elif users.get_by_employee_id(employee_id) is not None:
         errors.append(
             "У этого сотрудника уже есть учётная запись "
             "(один сотрудник — один пользователь)"

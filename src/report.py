@@ -1,3 +1,4 @@
+import uuid
 from datetime import date
 
 from src.models import Employee, Report, ReportRow, Shift
@@ -18,7 +19,9 @@ class ReportBuilder:
         self.lines.append(f"Период: {date_from} - {date_to}")
         self.lines.append("-" * 60)
 
-    def add_table(self, shifts: list[Shift], employees: dict[str, Employee]) -> None:
+    def add_table(
+        self, shifts: list[Shift], employees: dict[uuid.UUID, Employee]
+    ) -> None:
         """Добавляет таблицу смен и заполняет строки для экспорта в CSV."""
         self.lines.append(
             f"{'Сотрудник':22} {'Дата':11} {'Начало':7} {'Конец':7} {'Часы':6}"

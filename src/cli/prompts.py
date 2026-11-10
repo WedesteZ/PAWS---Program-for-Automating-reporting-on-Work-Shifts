@@ -1,9 +1,9 @@
+import uuid
 from collections.abc import Callable
 from datetime import date, time
 
-from src.db import Storage
 from src.export import EXPORTERS
-from src.models import Role
+from src.models import Employee, Role
 from src.validation import (
     validate_full_name,
     validate_password,
@@ -53,26 +53,43 @@ def read_period() -> tuple[date, date]:
         print("Начало периода не может быть позже его окончания, попробуйте снова")
 
 
-def read_employee_id(
-    prompt: str, storage: Storage, allow_empty: bool = False
-) -> str | None:
-    """Запрашивает ID существующего сотрудника до корректного ввода.
-
-    Перед вводом показывает список доступных сотрудников.
-    Если allow_empty=True, пустой ввод возвращает None.
-    """
+def print_employees(employees: list[Employee]) -> None:
+    """Выводит нумерованный список сотрудников."""
     print("Доступные сотрудники:")
-    if not storage.employees:
+    if not employees:
         print("  (список пуст)")
-    for employee in storage.employees.values():
-        print(f"  id={employee.id}: {employee.full_name} ({employee.position})")
+    for number, employee in enumerate(employees, start=1):
+        print(f"  {number}. {employee.full_name} ({employee.position})")
+
+
+def read_optional_employee_id(
+    prompt: str, employees: list[Employee]
+) -> uuid.UUID | None:
+    """Запрашивает номер сотрудника из списка (пустой ввод — None)."""
+    print_employees(employees)
     while True:
         raw = input(prompt).strip()
-        if not raw and allow_empty:
+        if not raw:
             return None
-        if raw in storage.employees:
-            return raw
-        print(f"Сотрудник с ID '{raw}' не найден, попробуйте снова")
+        if raw.isdigit() and 1 <= int(raw) <= len(employees):
+            return employees[int(raw) - 1].id
+        print(f"Нет сотрудника с номером '{raw}', попробуйте снова")
+
+
+def read_employee_id(prompt: str, employees: list[Employee]) -> uuid.UUID:
+    """Запрашивает номер сотрудника из списка до корректного ввода.
+
+    Raises:
+        ValueError: если список сотрудников пуст.
+    """
+    if not employees:
+        raise ValueError("Список сотрудников пуст, сначала добавьте сотрудника")
+    print_employees(employees)
+    while True:
+        raw = input(prompt).strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(employees):
+            return employees[int(raw) - 1].id
+        print(f"Нет сотрудника с номером '{raw}', попробуйте снова")
 
 
 def read_role(prompt: str) -> Role:

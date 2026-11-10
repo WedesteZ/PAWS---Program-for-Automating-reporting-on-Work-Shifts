@@ -7,7 +7,7 @@ from src.demo import seed_demo_data
 def main() -> None:
     """Собирает зависимости и запускает консольный интерфейс."""
     app = PawsApp()
-    auth = AuthManager(app.storage)
+    auth = AuthManager()
     seed_demo_data(app, auth)
 
     user = run_auth_menu(auth)
