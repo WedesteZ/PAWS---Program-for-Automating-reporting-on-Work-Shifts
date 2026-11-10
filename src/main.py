@@ -1,7 +1,7 @@
 import uvicorn
 from uuid import UUID
 from datetime import date, time
-from fastapi import FastAPI, Request, Form, status, Response, Depends
+from fastapi import FastAPI, Request, Form, status, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -62,14 +62,22 @@ async def logout(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(
         request: Request,
-        employee_id: UUID | None = None,
+        employee_id: str | None = None,
         error: str | None = None,
         current_user: str = Depends(get_current_user)
 ):
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    shifts = paws_core.list_shifts(employee_id=employee_id)
+    # Безопасный парсинг UUID
+    emp_uuid = None
+    if employee_id and employee_id.strip():
+        try:
+            emp_uuid = UUID(employee_id.strip())
+        except ValueError:
+            pass
+
+    shifts = paws_core.list_shifts(employee_id=emp_uuid)
     employees = paws_core.list_employees()
 
     context = {
@@ -86,7 +94,7 @@ async def dashboard(
 @app.post("/shifts/add")
 async def add_shift(
         request: Request,
-        employee_id: UUID = Form(...),
+        employee_id: str = Form(...),
         shift_date: str = Form(...),
         time_start: str = Form(...),
         time_end: str = Form(...),
@@ -97,12 +105,13 @@ async def add_shift(
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
     try:
+        emp_uuid = UUID(employee_id.strip())
         s_date = date.fromisoformat(shift_date)
         s_start = time.fromisoformat(time_start)
         s_end = time.fromisoformat(time_end)
 
         paws_core.add_shift(
-            employee_id=employee_id,
+            employee_id=emp_uuid,
             shift_date=s_date,
             start=s_start,
             end=s_end,
@@ -169,7 +178,7 @@ async def generate_report(
         request: Request,
         date_from: str = Form(...),
         date_to: str = Form(...),
-        employee_id: UUID | None = Form(None),
+        employee_id: str = Form(""),
         export_format: str = Form(""),
         current_user: str = Depends(get_current_user)
 ):
@@ -179,10 +188,14 @@ async def generate_report(
     employees = paws_core.list_employees()
 
     try:
+        emp_uuid = None
+        if employee_id and employee_id.strip():
+            emp_uuid = UUID(employee_id.strip())
+
         d_from = date.fromisoformat(date_from)
         d_to = date.fromisoformat(date_to)
 
-        report = paws_core.generate_report(date_from=d_from, date_to=d_to, employee_id=employee_id)
+        report = paws_core.generate_report(date_from=d_from, date_to=d_to, employee_id=emp_uuid)
 
         if export_format:
             filename = f"report_{date_from}_{date_to}.{export_format}"
