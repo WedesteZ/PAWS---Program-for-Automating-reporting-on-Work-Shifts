@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Справочник сотрудников</h2>
+    <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
+
+    <!-- Форма добавления сотрудника -->
+    <div style="background: #f9f9f9; padding: 20px; border-radius: 6px; margin-bottom: 30px; border: 1px solid #e1e1e1;">
+        <h3>Добавить нового сотрудника</h3>
+        <form method="POST" action="/employees/add" style="display: flex; gap: 15px; align-items: flex-end;">
+            <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                <label>ФИО сотрудника:</label>
+                <input type="text" name="full_name" required placeholder="Иванов Иван Иванович">
+            </div>
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label>Должность:</label>
+                <input type="text" name="position" placeholder="Разработчик / Менеджер">
+            </div>
+            <button type="submit" class="btn" style="background: #2ecc71; height: 38px;">Добавить</button>
+        </form>
+    </div>
+
+    <h3>Список сотрудников</h3>
+    {% if employees and employees|length > 0 %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ФИО</th>
+                    <th>Должность</th>
+                    <th>ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td><strong>{{ emp.full_name }}</strong></td>
+                    <td>{{ emp.position or 'Не указана' }}</td>
+                    <td style="color: #888; font-size: 12px;">{{ emp.id }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p style="color: #666;">В базе пока нет сотрудников.</p>
+    {% endif %}
+{% endblock %}
