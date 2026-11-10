@@ -1,32 +1,58 @@
+"""Модуль для экспорта отчетов в различные форматы."""
 import csv
 import json
-from abc import ABC, abstractmethod
 from pathlib import Path
+from abc import ABC, abstractmethod
 
 import openpyxl
 from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
 
 from src.models import Report
 
 
+def _get_title(report: Report) -> str:
+    """Извлекает однострочный заголовок из многострочного текста отчета."""
+    return report.text.split('\n')[0] if report.text else "Отчет"
+
+
 class Exporter(ABC):
+    """Базовый абстрактный класс экспортёра."""
 
     @abstractmethod
     def export(self, report: Report, filename: str) -> str:
+        """
+        Экспортирует отчет в файл.
+
+        Args:
+            report: Объект отчета с данными.
+            filename: Имя файла для сохранения.
+
+        Returns:
+            str: Путь к сохраненному файлу.
+        """
         pass
+
+
+class TxtExporter(Exporter):
+    """Экспорт отчета в простой текстовый формат."""
+    def export(self, report: Report, filename: str) -> str:
+        with open(filename, mode="w", encoding="utf-8") as f:
+            f.write(report.text)
+        return filename
 
 
 class CsvExporter(Exporter):
     """Экспорт отчета в формат CSV."""
-
     def export(self, report: Report, filename: str) -> str:
         with open(filename, mode="w", encoding="utf-8-sig", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([report.text])
-            writer.writerow(["Дата", "Сотрудник", "Начало", "Конец", "Часы", "Описание"])
+            writer.writerow([_get_title(report)])
+            writer.writerow([
+                "Дата", "Сотрудник", "Начало", "Конец", "Часы", "Описание"
+            ])
             for row in report.rows:
                 writer.writerow([
                     row.shift_date, str(row.employee), row.time_start,
@@ -39,10 +65,9 @@ class CsvExporter(Exporter):
 
 class JsonExporter(Exporter):
     """Экспорт отчета в формат JSON."""
-
     def export(self, report: Report, filename: str) -> str:
         data = {
-            "title": report.text,
+            "title": _get_title(report),
             "total_hours": report.total_hours,
             "rows": [
                 {
@@ -62,13 +87,12 @@ class JsonExporter(Exporter):
 
 class XlsxExporter(Exporter):
     """Экспорт отчета в формат Excel (XLSX)."""
-
     def export(self, report: Report, filename: str) -> str:
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Отчет PAWS"
 
-        ws.append([report.text])
+        ws.append([_get_title(report)])
         ws.append([])
 
         ws.append(["Дата", "Сотрудник", "Начало", "Конец", "Часы", "Описание"])
@@ -91,7 +115,6 @@ class XlsxExporter(Exporter):
 
 class PdfExporter(Exporter):
     """Экспорт отчета в формат PDF с поддержкой кириллицы."""
-
     def export(self, report: Report, filename: str) -> str:
         font_path = Path(__file__).resolve().parent.parent / 'DejaVuSans.ttf'
         try:
@@ -104,8 +127,7 @@ class PdfExporter(Exporter):
         width, height = letter
 
         c.setFont(font_name, 14)
-        title_text = report.text.split('\n')[0] if report.text else "Отчет"
-        c.drawString(50, height - 50, title_text)
+        c.drawString(50, height - 50, _get_title(report))
 
         c.setFont(font_name, 10)
         y = height - 80
@@ -140,14 +162,13 @@ class PdfExporter(Exporter):
         return filename
 
 
-# Словарь всех доступных экспортёров (Пункт 1)
 EXPORTERS = {
+    "txt": TxtExporter,
     "csv": CsvExporter,
     "json": JsonExporter,
     "xlsx": XlsxExporter,
     "pdf": PdfExporter
 }
-
 
 def get_exporter(fmt: str) -> Exporter:
     """
