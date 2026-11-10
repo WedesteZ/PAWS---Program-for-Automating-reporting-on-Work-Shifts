@@ -18,7 +18,6 @@ def validate_full_name(full_name: str) -> list[str]:
     if full_name and len(full_name.split()) < 2:
         errors.append("Укажите фамилию и имя (минимум два слова)")
 
-    # B7: Лимит для базы данных (VARCHAR 150)
     if full_name and len(full_name) > 150:
         errors.append("ФИО не может быть длиннее 150 символов")
 
@@ -91,7 +90,6 @@ def validate_shift(
     for other in shifts.find_overlapping(
         shift.employee_id, shift.start_at, shift.end_at
     ):
-        # Исправлена синтаксическая ошибка форматирования строки
         errors.append(
             f"Смена пересекается с другой сменой сотрудника: "
             f"{other.start_at:%Y-%m-%d %H:%M} - {other.end_at:%Y-%m-%d %H:%M}"
