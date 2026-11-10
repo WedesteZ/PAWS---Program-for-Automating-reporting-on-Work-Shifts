@@ -1,6 +1,10 @@
+"""Главный модуль веб-интерфейса PAWS."""
+import os
+import urllib.parse
 import uvicorn
 from uuid import UUID
 from datetime import date, time
+
 from fastapi import FastAPI, Request, Form, status, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
@@ -11,34 +15,39 @@ from src.app import PawsApp
 from src.auth import AuthManager
 from src.demo import seed_demo_data
 
-# Инициализация ядра PAWS
+# Инициализация ядра
 paws_core = PawsApp()
-auth_manager = AuthManager(paws_core.storage)
+auth_manager = AuthManager()  # Убрали paws_core.storage
 seed_demo_data(paws_core, auth_manager)
 
 app = FastAPI(title="PAWS Web")
 
-# Подключаем шифрование сессий
-app.add_middleware(SessionMiddleware, secret_key="super-secret-paws-key")
+# Подключение сессий с секретом из .env
+secret = os.getenv("SESSION_SECRET", "default-insecure-secret")
+app.add_middleware(SessionMiddleware, secret_key=secret)
 
 app.mount("/static", StaticFiles(directory="web"), name="static")
 templates = Jinja2Templates(directory="web")
 
 
-def get_current_user(request: Request):
-    """Читаем пользователя из зашифрованной сессии."""
+def get_current_user(request: Request) -> str | None:
+    """Возвращает текущего пользователя из сессии."""
     return request.session.get("user")
 
 
-# --- АВТОРИЗАЦИЯ ---
-
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse(request=request, name="login.html", context={"title": "Вход в PAWS"})
+    """Отображает страницу входа."""
+    return templates.TemplateResponse(
+        request=request, name="login.html", context={"title": "Вход в PAWS"}
+    )
 
 
 @app.post("/login")
-async def login_post(request: Request, username: str = Form(...), password: str = Form(...)):
+async def login_post(
+    request: Request, username: str = Form(...), password: str = Form(...)
+):
+    """Обрабатывает данные формы авторизации."""
     try:
         user = auth_manager.login(username, password)
         request.session["user"] = getattr(user, "username", str(user))
@@ -47,29 +56,28 @@ async def login_post(request: Request, username: str = Form(...), password: str 
         return templates.TemplateResponse(
             request=request,
             name="login.html",
-            context={"title": "Вход в PAWS", "error": str(e)}
+            context={"title": "Вход в PAWS", "error": str(e)},
         )
 
 
 @app.get("/logout")
 async def logout(request: Request):
+    """Очищает сессию пользователя и выходит из аккаунта."""
     request.session.clear()
     return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
 
-# --- ДАШБОРД И СМЕНЫ ---
-
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(
-        request: Request,
-        employee_id: str | None = None,
-        error: str | None = None,
-        current_user: str = Depends(get_current_user)
+    request: Request,
+    employee_id: str | None = None,
+    error: str | None = None,
+    current_user: str = Depends(get_current_user),
 ):
+    """Отображает дашборд управления сменами."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    # Безопасный парсинг UUID
     emp_uuid = None
     if employee_id and employee_id.strip():
         try:
@@ -86,21 +94,22 @@ async def dashboard(
         "shifts": shifts,
         "employees": employees,
         "selected_employee": str(employee_id) if employee_id else "",
-        "error": error
+        "error": error,
     }
     return templates.TemplateResponse(request=request, name="index.html", context=context)
 
 
 @app.post("/shifts/add")
 async def add_shift(
-        request: Request,
-        employee_id: str = Form(...),
-        shift_date: str = Form(...),
-        time_start: str = Form(...),
-        time_end: str = Form(...),
-        description: str = Form(""),
-        current_user: str = Depends(get_current_user)
+    request: Request,
+    employee_id: str = Form(...),
+    shift_date: str = Form(...),
+    time_start: str = Form(...),
+    time_end: str = Form(...),
+    description: str = Form(""),
+    current_user: str = Depends(get_current_user),
 ):
+    """Добавляет новую смену в систему."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -115,18 +124,20 @@ async def add_shift(
             shift_date=s_date,
             start=s_start,
             end=s_end,
-            description=description
+            description=description,
         )
     except ValueError as e:
-        return RedirectResponse(url=f"/?error={str(e)}", status_code=status.HTTP_302_FOUND)
+        error_msg = urllib.parse.quote(str(e))
+        return RedirectResponse(
+            url=f"/?error={error_msg}", status_code=status.HTTP_302_FOUND
+        )
 
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-# --- СОТРУДНИКИ ---
-
 @app.get("/employees", response_class=HTMLResponse)
 async def employees_page(request: Request, current_user: str = Depends(get_current_user)):
+    """Отображает список всех сотрудников."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -134,17 +145,20 @@ async def employees_page(request: Request, current_user: str = Depends(get_curre
     context = {
         "title": "PAWS - Сотрудники",
         "username": current_user,
-        "employees": employees
+        "employees": employees,
     }
-    return templates.TemplateResponse(request=request, name="employees.html", context=context)
+    return templates.TemplateResponse(
+        request=request, name="employees.html", context=context
+    )
 
 
 @app.post("/employees/add")
 async def add_employee(
-        full_name: str = Form(...),
-        position: str = Form(""),
-        current_user: str = Depends(get_current_user)
+    full_name: str = Form(...),
+    position: str = Form(""),
+    current_user: str = Depends(get_current_user),
 ):
+    """Создает нового сотрудника."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -152,14 +166,13 @@ async def add_employee(
     return RedirectResponse(url="/employees", status_code=status.HTTP_302_FOUND)
 
 
-# --- ОТЧЕТЫ ---
-
 @app.get("/reports", response_class=HTMLResponse)
 async def reports_page(
-        request: Request,
-        error: str | None = None,
-        current_user: str = Depends(get_current_user)
+    request: Request,
+    error: str | None = None,
+    current_user: str = Depends(get_current_user),
 ):
+    """Отображает страницу управления отчетами."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -168,20 +181,21 @@ async def reports_page(
         "title": "PAWS - Отчеты",
         "username": current_user,
         "employees": employees,
-        "error": error
+        "error": error,
     }
     return templates.TemplateResponse(request=request, name="reports.html", context=context)
 
 
 @app.post("/reports/generate")
 async def generate_report(
-        request: Request,
-        date_from: str = Form(...),
-        date_to: str = Form(...),
-        employee_id: str = Form(""),
-        export_format: str = Form(""),
-        current_user: str = Depends(get_current_user)
+    request: Request,
+    date_from: str = Form(...),
+    date_to: str = Form(...),
+    employee_id: str = Form(""),
+    export_format: str = Form(""),
+    current_user: str = Depends(get_current_user),
 ):
+    """Генерирует и при необходимости экспортирует отчет за период."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -195,12 +209,16 @@ async def generate_report(
         d_from = date.fromisoformat(date_from)
         d_to = date.fromisoformat(date_to)
 
-        report = paws_core.generate_report(date_from=d_from, date_to=d_to, employee_id=emp_uuid)
+        report = paws_core.generate_report(
+            date_from=d_from, date_to=d_to, employee_id=emp_uuid
+        )
 
         if export_format:
             filename = f"report_{date_from}_{date_to}.{export_format}"
             paws_core.export_report(report, fmt=export_format, filename=filename)
-            return FileResponse(filename, filename=filename, media_type='application/octet-stream')
+            return FileResponse(
+                filename, filename=filename, media_type="application/octet-stream"
+            )
 
         context = {
             "title": "PAWS - Результат отчета",
@@ -208,12 +226,17 @@ async def generate_report(
             "employees": employees,
             "report": report,
             "date_from": date_from,
-            "date_to": date_to
+            "date_to": date_to,
         }
-        return templates.TemplateResponse(request=request, name="reports.html", context=context)
+        return templates.TemplateResponse(
+            request=request, name="reports.html", context=context
+        )
 
     except Exception as e:
-        return RedirectResponse(url=f"/reports?error={str(e)}", status_code=status.HTTP_302_FOUND)
+        error_msg = urllib.parse.quote(str(e))
+        return RedirectResponse(
+            url=f"/reports?error={error_msg}", status_code=status.HTTP_302_FOUND
+        )
 
 
 if __name__ == "__main__":
