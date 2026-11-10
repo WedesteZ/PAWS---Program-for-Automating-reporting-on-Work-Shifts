@@ -15,14 +15,12 @@ from src.app import PawsApp
 from src.auth import AuthManager
 from src.demo import seed_demo_data
 
-# Инициализация ядра
 paws_core = PawsApp()
 auth_manager = AuthManager()
 seed_demo_data(paws_core, auth_manager)
 
 app = FastAPI(title="PAWS Web")
 
-# Подключение сессий с секретом из .env (без небезопасного дефолта)
 secret = os.environ["SESSION_SECRET"]
 app.add_middleware(SessionMiddleware, secret_key=secret)
 
@@ -51,6 +49,7 @@ async def login_post(
     try:
         user = auth_manager.login(username, password)
         request.session["user"] = getattr(user, "username", str(user))
+        request.session["role"] = user.role.value
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     except ValueError as e:
         return templates.TemplateResponse(
@@ -115,6 +114,12 @@ async def add_shift(
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
+    if request.session.get("role") not in ["admin", "manager"]:
+        error_msg = urllib.parse.quote("Недостаточно прав для добавления смены.")
+        return RedirectResponse(
+            url=f"/?error={error_msg}", status_code=status.HTTP_302_FOUND
+        )
+
     try:
         emp_uuid = UUID(employee_id.strip())
         s_date = date.fromisoformat(shift_date)
@@ -139,7 +144,9 @@ async def add_shift(
 
 @app.get("/employees", response_class=HTMLResponse)
 async def employees_page(
-    request: Request, current_user: str = Depends(get_current_user)
+    request: Request,
+    error: str | None = None,
+    current_user: str = Depends(get_current_user),
 ):
     """Отображает список всех сотрудников."""
     if not current_user:
@@ -150,6 +157,7 @@ async def employees_page(
         "title": "PAWS - Сотрудники",
         "username": current_user,
         "employees": employees,
+        "error": error,
     }
     return templates.TemplateResponse(
         request=request, name="employees.html", context=context
@@ -158,6 +166,7 @@ async def employees_page(
 
 @app.post("/employees/add")
 async def add_employee(
+    request: Request,
     full_name: str = Form(...),
     position: str = Form(""),
     current_user: str = Depends(get_current_user),
@@ -166,7 +175,22 @@ async def add_employee(
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    paws_core.add_employee(full_name=full_name, position=position)
+    if request.session.get("role") not in ["admin", "manager"]:
+        error_msg = urllib.parse.quote("Недостаточно прав для добавления сотрудника.")
+        return RedirectResponse(
+            url=f"/employees?error={error_msg}",
+            status_code=status.HTTP_302_FOUND,
+        )
+
+    try:
+        paws_core.add_employee(full_name=full_name, position=position)
+    except ValueError as e:
+        error_msg = urllib.parse.quote(str(e))
+        return RedirectResponse(
+            url=f"/employees?error={error_msg}",
+            status_code=status.HTTP_302_FOUND,
+        )
+
     return RedirectResponse(url="/employees", status_code=status.HTTP_302_FOUND)
 
 
@@ -185,6 +209,7 @@ async def reports_page(
         "title": "PAWS - Отчеты",
         "username": current_user,
         "employees": employees,
+        "selected_employee": "",
         "error": error,
     }
     return templates.TemplateResponse(
@@ -231,6 +256,7 @@ async def generate_report(
             "username": current_user,
             "employees": employees,
             "report": report,
+            "selected_employee": str(employee_id) if employee_id else "",
             "date_from": date_from,
             "date_to": date_to,
         }
@@ -238,10 +264,17 @@ async def generate_report(
             request=request, name="reports.html", context=context
         )
 
-    except Exception as e:
+    except ValueError as e:
         error_msg = urllib.parse.quote(str(e))
         return RedirectResponse(
-            url=f"/reports?error={error_msg}", status_code=status.HTTP_302_FOUND
+            url=f"/reports?error={error_msg}",
+            status_code=status.HTTP_302_FOUND,
+        )
+    except Exception:
+        error_msg = urllib.parse.quote("Системная ошибка при генерации отчета.")
+        return RedirectResponse(
+            url=f"/reports?error={error_msg}",
+            status_code=status.HTTP_302_FOUND,
         )
 
 

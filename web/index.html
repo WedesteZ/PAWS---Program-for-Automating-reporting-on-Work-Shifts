@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% if error %}
+<div class="error-msg" style="color: #721c24; background: #f8d7da; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb; margin-bottom: 20px;">
+    {{ error }}
+</div>
+{% endif %}
     <h2>Учет рабочих смен</h2>
     <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
 
@@ -46,7 +51,7 @@
             <select name="employee_id" onchange="this.form.submit()" style="padding: 6px; border-radius: 4px; border: 1px solid #ccc;">
                 <option value="">Все сотрудники</option>
                 {% for emp in employees %}
-                    <option value="{{ emp.id }}" {% if selected_employee == emp.id %}selected{% endif %}>{{ emp.full_name }}</option>
+                    <option value="{{ emp.id }}" {% if selected_employee == emp.id | string %}selected{% endif %}>{{ emp.full_name }}</option>
                 {% endfor %}
             </select>
         </form>
@@ -54,25 +59,25 @@
 
     <!-- Таблица смен -->
     {% if shifts and shifts|length > 0 %}
-        <table>
+        <table style="width: 100%; table-layout: fixed;">
             <thead>
                 <tr>
-                    <th>Дата</th>
-                    <th>Время</th>
-                    <th>Сотрудник</th>
-                    <th>Описание</th>
+                    <th style="width: 15%;">Дата</th>
+                    <th style="width: 15%;">Время</th>
+                    <th style="width: 30%;">Сотрудник</th>
+                    <th style="width: 40%;">Описание</th>
                 </tr>
             </thead>
             <tbody>
                 {% for shift in shifts %}
                 <tr>
                     <td>{{ shift.shift_date }}</td>
-                    <td>{{ shift.time_start }} — {{ shift.time_end }}</td>
-                    <td>
+                    <td>{{ shift.time_start.strftime('%H:%M') }} — {{ shift.time_end.strftime('%H:%M') }}</td>
+                    <td style="word-wrap: break-word; max-width: 150px; overflow: hidden;">
                         {% set emp = employees | selectattr("id", "equalto", shift.employee_id) | first %}
                         {{ emp.full_name if emp else shift.employee_id }}
                     </td>
-                    <td>{{ shift.description or '-' }}</td>
+                    <td style="word-wrap: break-word; max-width: 200px; overflow: hidden;">{{ shift.description or '-' }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -15,8 +15,12 @@ def validate_full_name(full_name: str) -> list[str]:
     if not full_name:
         errors.append("ФИО не может быть пустым")
 
-    if len(full_name.split()) < 2:
+    if full_name and len(full_name.split()) < 2:
         errors.append("Укажите фамилию и имя (минимум два слова)")
+
+    # B7: Лимит для базы данных (VARCHAR 150)
+    if full_name and len(full_name) > 150:
+        errors.append("ФИО не может быть длиннее 150 символов")
 
     if full_name and not NAME_PATTERN.fullmatch(full_name):
         errors.append("ФИО может содержать только буквы, пробелы и дефисы")
@@ -31,7 +35,7 @@ def validate_position(position: str) -> list[str]:
     if not position:
         errors.append("Должность не может быть пустой")
 
-    if len(position) > 50:
+    if position and len(position) > 50:
         errors.append("Должность не может быть длиннее 50 символов")
 
     return errors
@@ -60,10 +64,10 @@ def validate_password(password: str) -> list[str]:
     if not password:
         errors.append("Пароль не может быть пустым")
 
-    if len(password) < 4:
+    if password and len(password) < 4:
         errors.append("Пароль должен содержать минимум 4 символа")
 
-    if len(password) > 64:
+    if password and len(password) > 64:
         errors.append("Пароль не может быть длиннее 64 символов")
 
     return errors
@@ -87,6 +91,7 @@ def validate_shift(
     for other in shifts.find_overlapping(
         shift.employee_id, shift.start_at, shift.end_at
     ):
+        # Исправлена синтаксическая ошибка форматирования строки
         errors.append(
             f"Смена пересекается с другой сменой сотрудника: "
             f"{other.start_at:%Y-%m-%d %H:%M} - {other.end_at:%Y-%m-%d %H:%M}"
