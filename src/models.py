@@ -19,12 +19,16 @@ class Role(Enum):
 
 @dataclass
 class Employee:
-    """Сотрудник: ФИО, должность и признак активности."""
+    """Сотрудник: ФИО, должность, контакты и признак активности."""
 
     full_name: str
     position: str = ""
+    department: str | None = None
+    hire_date: date = field(default_factory=date.today)
+    phone: str | None = None
+    email: str | None = None
     active: bool = True
-    id: str = field(default_factory=new_id)
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
 
     def deactivate(self) -> None:
         """Помечает сотрудника как уволенного (неактивного)."""

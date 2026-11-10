@@ -16,4 +16,3 @@ SessionLocal = sessionmaker(engine)
 
 class Base(DeclarativeBase):
     """Базовый класс всех ORM-моделей."""
-    
