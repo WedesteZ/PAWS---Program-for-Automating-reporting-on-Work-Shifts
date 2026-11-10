@@ -141,11 +141,10 @@ class ReportRow:
 
 @dataclass(frozen=True)
 class Report:
-    """Готовый отчёт: текст для вывода, строки таблицы и итоги."""
+    """Готовый отчёт: заголовок, период, строки таблицы и итоги."""
 
-    text: str
+    title: str
+    period: str
     rows: list[ReportRow]
     total_shifts: int
     total_hours: float
-    title: str = ""
-    period: str = ""

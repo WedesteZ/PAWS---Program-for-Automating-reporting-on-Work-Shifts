@@ -22,7 +22,7 @@ HEADERS = ["Дата", "Сотрудник", "Начало", "Конец", "Ча
 
 def _title(report: Report) -> str:
     """Возвращает заголовок отчёта."""
-    return report.title or report.text.split("\n")[0] or "Отчёт"
+    return report.title or "Отчёт"
 
 
 def _date(value: date) -> str:
@@ -59,16 +59,6 @@ class Exporter(ABC):
         Returns:
             Путь к сохранённому файлу.
         """
-
-
-class TxtExporter(Exporter):
-    """Экспорт отчёта в простой текстовый формат."""
-
-    def export(self, report: Report, filename: str) -> str:
-        """Записывает готовый текст отчёта в файл."""
-        with open(filename, mode="w", encoding="utf-8") as f:
-            f.write(report.text)
-        return filename
 
 
 class XlsxExporter(Exporter):
@@ -186,7 +176,6 @@ class PdfExporter(Exporter):
 
 
 EXPORTERS = {
-    "txt": TxtExporter,
     "xlsx": XlsxExporter,
     "pdf": PdfExporter,
 }

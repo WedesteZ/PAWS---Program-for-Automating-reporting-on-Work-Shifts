@@ -90,7 +90,7 @@ class ReportOrm(Base):
     __tablename__ = "reports"
     __table_args__ = (
         CheckConstraint(
-            "file_format IN ('pdf', 'xlsx', 'txt', 'csv')",
+            "file_format IN ('pdf', 'xlsx')",
             name="reports_format_check",
         ),
         CheckConstraint(

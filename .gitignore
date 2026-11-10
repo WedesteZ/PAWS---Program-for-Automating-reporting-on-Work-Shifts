@@ -1,8 +1,5 @@
 report_*.pdf
 report_*.xlsx
-report_*.csv
-report_*.json
-report_*.txt
 # Python-generated files
 __pycache__/
 *.py[oc]
