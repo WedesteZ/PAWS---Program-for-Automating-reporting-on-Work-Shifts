@@ -23,7 +23,13 @@ class ReportService:
         date_to: date,
         employee_id: uuid.UUID | None = None,
     ) -> Report:
-        """Формирует отчёт по сменам за период (по одному или всем сотрудникам)."""
+        """Формирует отчёт по сменам за период (по одному или всем сотрудникам).
+
+        Raises:
+            ValueError: если дата начала позже даты окончания.
+        """
+        if date_from > date_to:
+            raise ValueError("Дата начала периода позже даты окончания")
         with self.session_factory() as session:
             shifts = ShiftRepository(session).list_between(
                 date_from, date_to, employee_id

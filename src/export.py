@@ -1,21 +1,48 @@
-"""Модуль для экспорта отчетов в различные форматы."""
-import csv
-import json
+"""Модуль для экспорта отчётов в различные форматы."""
+
 from abc import ABC, abstractmethod
+from datetime import date, time
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 import openpyxl
-from reportlab.lib.pagesizes import letter
+from openpyxl.styles import Font
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from src.models import Report
 
+FONT_PATH = Path(__file__).resolve().parent.parent / "DejaVuSans.ttf"
+HEADERS = ["Дата", "Сотрудник", "Начало", "Конец", "Часы", "Описание"]
 
-def _get_title(report: Report) -> str:
-    """Извлекает однострочный заголовок из многострочного текста отчета."""
-    return report.text.split('\n')[0] if report.text else "Отчет"
+
+def _title(report: Report) -> str:
+    """Возвращает заголовок отчёта."""
+    return report.title or report.text.split("\n")[0] or "Отчёт"
+
+
+def _date(value: date) -> str:
+    """Форматирует дату как ДД.ММ.ГГГГ."""
+    return f"{value:%d.%m.%Y}"
+
+
+def _time(value: time) -> str:
+    """Форматирует время как ЧЧ:ММ."""
+    return f"{value:%H:%M}"
+
+
+def _period_line(report: Report) -> str:
+    """Возвращает строку с периодом отчёта (пустую, если период не задан)."""
+    return f"Период: {report.period}" if report.period else ""
+
+
+def _summary(report: Report) -> str:
+    """Возвращает итоговую строку: число смен и сумма часов."""
+    return f"Всего смен: {report.total_shifts}; всего часов: {report.total_hours}"
 
 
 class Exporter(ABC):
@@ -23,168 +50,161 @@ class Exporter(ABC):
 
     @abstractmethod
     def export(self, report: Report, filename: str) -> str:
-        """
-        Экспортирует отчет в файл.
+        """Экспортирует отчёт в файл.
 
         Args:
-            report: Объект отчета с данными.
+            report: Объект отчёта с данными.
             filename: Имя файла для сохранения.
 
         Returns:
-            str: Путь к сохраненному файлу.
+            Путь к сохранённому файлу.
         """
-        pass
 
 
 class TxtExporter(Exporter):
-    """Экспорт отчета в простой текстовый формат."""
+    """Экспорт отчёта в простой текстовый формат."""
+
     def export(self, report: Report, filename: str) -> str:
+        """Записывает готовый текст отчёта в файл."""
         with open(filename, mode="w", encoding="utf-8") as f:
             f.write(report.text)
         return filename
 
 
-class CsvExporter(Exporter):
-    """Экспорт отчета в формат CSV."""
-    def export(self, report: Report, filename: str) -> str:
-        with open(filename, mode="w", encoding="utf-8-sig", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow([_get_title(report)])
-            writer.writerow([
-                "Дата", "Сотрудник", "Начало", "Конец", "Часы", "Описание"
-            ])
-            for row in report.rows:
-                writer.writerow([
-                    row.shift_date, str(row.employee), row.time_start,
-                    row.time_end, row.hours, row.description
-                ])
-            writer.writerow([])
-            writer.writerow(["Итого часов:", report.total_hours])
-        return filename
-
-
-class JsonExporter(Exporter):
-    """Экспорт отчета в формат JSON."""
-    def export(self, report: Report, filename: str) -> str:
-        data = {
-            "title": _get_title(report),
-            "total_hours": report.total_hours,
-            "rows": [
-                {
-                    "date": str(r.shift_date),
-                    "employee": str(r.employee),
-                    "time_start": str(r.time_start),
-                    "time_end": str(r.time_end),
-                    "hours": r.hours,
-                    "description": r.description
-                } for r in report.rows
-            ]
-        }
-        with open(filename, mode="w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-        return filename
-
-
 class XlsxExporter(Exporter):
-    """Экспорт отчета в формат Excel (XLSX)."""
+    """Экспорт отчёта в формат Excel (XLSX)."""
+
+    WIDTHS = (12, 40, 9, 9, 8, 50)
+
     def export(self, report: Report, filename: str) -> str:
+        """Записывает отчёт в XLSX с заголовками и итогами."""
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Отчет PAWS"
+        ws.title = "Отчёт PAWS"
+        bold = Font(bold=True)
 
-        ws.append([_get_title(report)])
+        ws.append([_title(report)])
+        ws.append([_period_line(report)])
         ws.append([])
-
-        ws.append(["Дата", "Сотрудник", "Начало", "Конец", "Часы", "Описание"])
+        ws.append(HEADERS)
+        header_row = ws.max_row
         for row in report.rows:
-            ws.append([
-                str(row.shift_date),
-                str(row.employee),
-                str(row.time_start),
-                str(row.time_end),
-                row.hours,
-                row.description
-            ])
-
+            ws.append(
+                [
+                    _date(row.shift_date),
+                    row.employee,
+                    _time(row.time_start),
+                    _time(row.time_end),
+                    row.hours,
+                    row.description,
+                ]
+            )
         ws.append([])
-        ws.append(["Итого часов:", report.total_hours])
+        ws.append(["Всего смен:", report.total_shifts])
+        ws.append(["Всего часов:", report.total_hours])
+
+        ws["A1"].font = Font(bold=True, size=14)
+        for cell in ws[header_row]:
+            cell.font = bold
+        for column, width in zip("ABCDEF", self.WIDTHS, strict=True):
+            ws.column_dimensions[column].width = width
+        ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
 
         wb.save(filename)
         return filename
 
 
 class PdfExporter(Exporter):
-    """Экспорт отчета в формат PDF с поддержкой кириллицы."""
+    """Экспорт отчёта в формат PDF с поддержкой кириллицы."""
+
+    FONT = "DejaVu"
+
     def export(self, report: Report, filename: str) -> str:
-        font_path = Path(__file__).resolve().parent.parent / 'DejaVuSans.ttf'
-        try:
-            pdfmetrics.registerFont(TTFont('DejaVu', str(font_path)))
-            font_name = 'DejaVu'
-        except Exception:
-            font_name = 'Helvetica'
+        """Записывает отчёт в PDF: длинный текст переносится, шапка повторяется.
 
-        c = canvas.Canvas(filename, pagesize=letter)
-        width, height = letter
+        Raises:
+            ValueError: если не найден файл шрифта с кириллицей.
+        """
+        if not FONT_PATH.exists():
+            raise ValueError("Не найден шрифт DejaVuSans.ttf для PDF-отчёта")
+        if self.FONT not in pdfmetrics.getRegisteredFontNames():
+            pdfmetrics.registerFont(TTFont(self.FONT, str(FONT_PATH)))
 
-        c.setFont(font_name, 14)
-        c.drawString(50, height - 50, _get_title(report))
+        title_style = ParagraphStyle(
+            "title", fontName=self.FONT, fontSize=14, leading=20
+        )
+        text_style = ParagraphStyle("text", fontName=self.FONT, fontSize=9, leading=11)
+        head_style = ParagraphStyle("head", parent=text_style, textColor=colors.white)
 
-        c.setFont(font_name, 10)
-        y = height - 80
+        def cell(value: object, style: ParagraphStyle = text_style) -> Paragraph:
+            return Paragraph(escape(str(value)), style)
 
-        c.drawString(50, y, "Дата")
-        c.drawString(130, y, "Сотрудник")
-        c.drawString(270, y, "Время")
-        c.drawString(350, y, "Часы")
-        c.drawString(400, y, "Описание")
-
-        y -= 20
-        c.line(50, y + 15, 550, y + 15)
-
+        data = [[cell(h, head_style) for h in HEADERS]]
         for row in report.rows:
-            if y < 50:
-                c.showPage()
-                y = height - 50
-                c.setFont(font_name, 10)
+            data.append(
+                [
+                    cell(_date(row.shift_date)),
+                    cell(row.employee),
+                    cell(_time(row.time_start)),
+                    cell(_time(row.time_end)),
+                    cell(row.hours),
+                    cell(row.description),
+                ]
+            )
 
-            c.drawString(50, y, str(row.shift_date))
-            c.drawString(130, y, str(row.employee)[:20])
-            c.drawString(270, y, f"{row.time_start}-{row.time_end}")
-            c.drawString(350, y, str(row.hours))
-            c.drawString(400, y, str(row.description)[:30])
-            y -= 20
+        table = Table(
+            data,
+            colWidths=[70, 125, 48, 46, 38, 188],
+            repeatRows=1,
+        )
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3498db")),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ]
+            )
+        )
 
-        y -= 10
-        c.line(50, y + 15, 550, y + 15)
-        c.drawString(50, y, f"Итого часов: {report.total_hours}")
+        story = [Paragraph(escape(_title(report)), title_style)]
+        if report.period:
+            story.append(Paragraph(escape(_period_line(report)), text_style))
+        story += [Spacer(1, 10), table, Spacer(1, 10)]
+        story.append(Paragraph(escape(_summary(report)), text_style))
 
-        c.save()
+        doc = SimpleDocTemplate(
+            filename,
+            pagesize=A4,
+            leftMargin=36,
+            rightMargin=36,
+            topMargin=40,
+            bottomMargin=40,
+        )
+        doc.build(story)
         return filename
 
 
 EXPORTERS = {
     "txt": TxtExporter,
-    "csv": CsvExporter,
-    "json": JsonExporter,
     "xlsx": XlsxExporter,
-    "pdf": PdfExporter
+    "pdf": PdfExporter,
 }
 
+
 def get_exporter(fmt: str) -> Exporter:
-    """
-    Фабрика для получения нужного экспортёра по формату.
+    """Фабрика: возвращает экспортёр по названию формата.
 
     Args:
-        fmt (str): Название формата (например, 'pdf', 'csv').
+        fmt: Название формата (например, 'pdf', 'xlsx').
 
     Returns:
-        Exporter: Экземпляр класса экспортёра.
+        Экземпляр класса экспортёра.
 
     Raises:
         ValueError: Если формат не поддерживается.
     """
-    fmt = fmt.lower()
-    exporter_class = EXPORTERS.get(fmt)
+    exporter_class = EXPORTERS.get(fmt.lower())
     if not exporter_class:
         raise ValueError(f"Неизвестный формат отчёта: {fmt}")
     return exporter_class()

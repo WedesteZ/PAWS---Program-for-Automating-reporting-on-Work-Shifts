@@ -147,3 +147,5 @@ class Report:
     rows: list[ReportRow]
     total_shifts: int
     total_hours: float
+    title: str = ""
+    period: str = ""

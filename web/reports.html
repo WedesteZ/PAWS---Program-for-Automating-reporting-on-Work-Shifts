@@ -35,8 +35,6 @@
                 <select name="export_format">
                     <option value="">Не экспортировать (на экран)</option>
                     <option value="txt">Текстовый файл (TXT)</option>
-                    <option value="csv">Таблица (CSV)</option>
-                    <option value="json">Данные (JSON)</option>
                     <option value="xlsx">Excel (XLSX)</option>
                     <option value="pdf">Документ (PDF)</option>
                 </select>
@@ -48,7 +46,8 @@
 
 {% if report %}
 <div style="margin-top: 20px;">
-    <h3>{{ report.text.split('\n')[0] }}</h3>
+    <h3>{{ report.title }}</h3>
+    <p style="color: #666;">Период: {{ report.period }}</p>
 
     <table style="width: 100%; table-layout: fixed; margin-top: 15px;">
         <thead>
@@ -64,19 +63,23 @@
         <tbody>
             {% for row in report.rows %}
             <tr>
-                <td>{{ row.shift_date }}</td>
+                <td>{{ row.shift_date.strftime('%d.%m.%Y') }}</td>
                 <td style="word-wrap: break-word; max-width: 150px; overflow: hidden;">{{ row.employee }}</td>
                 <td>{{ row.time_start.strftime('%H:%M') }}</td>
                 <td>{{ row.time_end.strftime('%H:%M') }}</td>
                 <td>{{ row.hours }}</td>
                 <td style="word-wrap: break-word; max-width: 150px; overflow: hidden;">{{ row.description }}</td>
             </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: #666;">За выбранный период смен нет.</td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>
 
     <div style="margin-top: 15px; font-weight: bold;">
-        Итого часов: {{ report.total_hours }}
+        Всего смен: {{ report.total_shifts }}, всего часов: {{ report.total_hours }}
     </div>
 </div>
 {% endif %}

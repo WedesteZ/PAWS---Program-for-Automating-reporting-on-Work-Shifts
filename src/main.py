@@ -1,5 +1,8 @@
 """Главный модуль веб-интерфейса PAWS."""
+import logging
 import os
+import shutil
+import tempfile
 import urllib.parse
 from datetime import date, time
 from uuid import UUID
@@ -9,11 +12,15 @@ from fastapi import Depends, FastAPI, Form, Request, status
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.background import BackgroundTask
 from starlette.middleware.sessions import SessionMiddleware
 
 from src.app import PawsApp
 from src.auth import AuthManager
 from src.demo import seed_demo_data
+from src.models import Report
+
+logger = logging.getLogger(__name__)
 
 paws_core = PawsApp()
 auth_manager = AuthManager()
@@ -194,6 +201,29 @@ async def add_employee(
     return RedirectResponse(url="/employees", status_code=status.HTTP_302_FOUND)
 
 
+def export_response(
+    report: Report, fmt: str, date_from: date, date_to: date
+) -> FileResponse:
+    """Сохраняет отчёт во временный файл и отдаёт его на скачивание.
+
+    Временная папка удаляется после отправки файла.
+    """
+    download_name = f"report_{date_from}_{date_to}.{fmt}"
+    tmp_dir = tempfile.mkdtemp(prefix="paws_")
+    path = os.path.join(tmp_dir, download_name)
+    try:
+        paws_core.export_report(report, fmt=fmt, filename=path)
+    except Exception:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise
+    return FileResponse(
+        path,
+        filename=download_name,
+        media_type="application/octet-stream",
+        background=BackgroundTask(shutil.rmtree, tmp_dir, True),
+    )
+
+
 @app.get("/reports", response_class=HTMLResponse)
 async def reports_page(
     request: Request,
@@ -245,11 +275,7 @@ async def generate_report(
         )
 
         if export_format:
-            filename = f"report_{date_from}_{date_to}.{export_format}"
-            paws_core.export_report(report, fmt=export_format, filename=filename)
-            return FileResponse(
-                filename, filename=filename, media_type="application/octet-stream"
-            )
+            return export_response(report, export_format, d_from, d_to)
 
         context = {
             "title": "PAWS - Результат отчета",
@@ -271,6 +297,7 @@ async def generate_report(
             status_code=status.HTTP_302_FOUND,
         )
     except Exception:
+        logger.exception("Ошибка при формировании отчёта")
         error_msg = urllib.parse.quote("Системная ошибка при генерации отчета.")
         return RedirectResponse(
             url=f"/reports?error={error_msg}",
