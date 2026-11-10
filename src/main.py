@@ -1,14 +1,14 @@
 """Главный модуль веб-интерфейса PAWS."""
 import os
 import urllib.parse
-from datetime import date, time
-from uuid import UUID
-
 import uvicorn
-from fastapi import Depends, FastAPI, Form, Request, status
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
+from uuid import UUID
+from datetime import date, time
+
+from fastapi import FastAPI, Request, Form, status, Depends
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from src.app import PawsApp
@@ -17,13 +17,13 @@ from src.demo import seed_demo_data
 
 # Инициализация ядра
 paws_core = PawsApp()
-auth_manager = AuthManager()  # Убрали paws_core.storage
+auth_manager = AuthManager()
 seed_demo_data(paws_core, auth_manager)
 
 app = FastAPI(title="PAWS Web")
 
-# Подключение сессий с секретом из .env
-secret = os.getenv("SESSION_SECRET", "default-insecure-secret")
+# Подключение сессий с секретом из .env (без небезопасного дефолта)
+secret = os.environ["SESSION_SECRET"]
 app.add_middleware(SessionMiddleware, secret_key=secret)
 
 app.mount("/static", StaticFiles(directory="web"), name="static")
@@ -96,7 +96,9 @@ async def dashboard(
         "selected_employee": str(employee_id) if employee_id else "",
         "error": error,
     }
-    return templates.TemplateResponse(request=request, name="index.html", context=context)
+    return templates.TemplateResponse(
+        request=request, name="index.html", context=context
+    )
 
 
 @app.post("/shifts/add")
@@ -136,7 +138,9 @@ async def add_shift(
 
 
 @app.get("/employees", response_class=HTMLResponse)
-async def employees_page(request: Request, current_user: str = Depends(get_current_user)):
+async def employees_page(
+    request: Request, current_user: str = Depends(get_current_user)
+):
     """Отображает список всех сотрудников."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -183,7 +187,9 @@ async def reports_page(
         "employees": employees,
         "error": error,
     }
-    return templates.TemplateResponse(request=request, name="reports.html", context=context)
+    return templates.TemplateResponse(
+        request=request, name="reports.html", context=context
+    )
 
 
 @app.post("/reports/generate")
@@ -239,5 +245,10 @@ async def generate_report(
         )
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Точка входа для запуска веб-сервера через uv run paws."""
     uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
+
+
+if __name__ == "__main__":
+    main()
