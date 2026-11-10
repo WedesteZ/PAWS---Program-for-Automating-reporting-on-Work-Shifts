@@ -22,7 +22,7 @@ seed_demo_data(paws_core, auth_manager)
 
 app = FastAPI(title="PAWS Web")
 
-# Подключение сессий с секретом из .env (без небезопасного дефолта)
+# Подключение сессий с секретом из .env
 secret = os.environ["SESSION_SECRET"]
 app.add_middleware(SessionMiddleware, secret_key=secret)
 
@@ -51,6 +51,8 @@ async def login_post(
     try:
         user = auth_manager.login(username, password)
         request.session["user"] = getattr(user, "username", str(user))
+        # B9: Сохраняем роль пользователя в защищенной сессии (по умолчанию employee)
+        request.session["role"] = getattr(user, "role", "employee")
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     except ValueError as e:
         return templates.TemplateResponse(
@@ -115,6 +117,13 @@ async def add_shift(
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
+    # B9: Проверка роли (только admin и manager могут добавлять смены)
+    if request.session.get("role") not in ["admin", "manager"]:
+        error_msg = urllib.parse.quote("Недостаточно прав для добавления смены.")
+        return RedirectResponse(
+            url=f"/?error={error_msg}", status_code=status.HTTP_302_FOUND
+        )
+
     try:
         emp_uuid = UUID(employee_id.strip())
         s_date = date.fromisoformat(shift_date)
@@ -158,6 +167,7 @@ async def employees_page(
 
 @app.post("/employees/add")
 async def add_employee(
+    request: Request,
     full_name: str = Form(...),
     position: str = Form(""),
     current_user: str = Depends(get_current_user),
@@ -166,7 +176,22 @@ async def add_employee(
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    paws_core.add_employee(full_name=full_name, position=position)
+    # B9: Проверка роли (только admin и manager могут добавлять сотрудников)
+    if request.session.get("role") not in ["admin", "manager"]:
+        error_msg = urllib.parse.quote("Недостаточно прав для добавления сотрудника.")
+        return RedirectResponse(
+            url=f"/employees?error={error_msg}", status_code=status.HTTP_302_FOUND
+        )
+
+    # B6: Отлов ошибок валидации (длинное имя, пустое значение и т.д.)
+    try:
+        paws_core.add_employee(full_name=full_name, position=position)
+    except ValueError as e:
+        error_msg = urllib.parse.quote(str(e))
+        return RedirectResponse(
+            url=f"/employees?error={error_msg}", status_code=status.HTTP_302_FOUND
+        )
+
     return RedirectResponse(url="/employees", status_code=status.HTTP_302_FOUND)
 
 
@@ -238,8 +263,15 @@ async def generate_report(
             request=request, name="reports.html", context=context
         )
 
-    except Exception as e:
+    except ValueError as e:
+        # Показываем только понятные ошибки валидации
         error_msg = urllib.parse.quote(str(e))
+        return RedirectResponse(
+            url=f"/reports?error={error_msg}", status_code=status.HTTP_302_FOUND
+        )
+    except Exception:
+        # B10: Скрываем системные сбои (500) от пользователя
+        error_msg = urllib.parse.quote("Произошла системная ошибка при генерации отчета.")
         return RedirectResponse(
             url=f"/reports?error={error_msg}", status_code=status.HTTP_302_FOUND
         )
