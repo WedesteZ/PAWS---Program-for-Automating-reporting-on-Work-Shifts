@@ -88,7 +88,7 @@ def upgrade() -> None:
     sa.Column('file_path', sa.String(length=255), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('created_by', sa.Uuid(), nullable=False),
-    sa.CheckConstraint("file_format IN ('pdf', 'xlsx)", name='reports_format_check'),
+    sa.CheckConstraint("file_format IN ('pdf', 'xlsx')", name='reports_format_check'),
     sa.CheckConstraint("report_type IN ('daily', 'summary')", name='reports_type_check'),
     sa.CheckConstraint('date_from <= date_to', name='reports_period_check'),
     sa.ForeignKeyConstraint(['created_by'], ['users.id'], ondelete='RESTRICT'),
