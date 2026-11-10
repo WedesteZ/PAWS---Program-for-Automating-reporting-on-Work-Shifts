@@ -3,8 +3,8 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.models import Employee
-from src.orm_models import EmployeeOrm
+from src.models import Employee, Role, User
+from src.orm_models import EmployeeOrm, UserOrm
 
 
 def employee_to_domain(row: EmployeeOrm) -> Employee:
@@ -54,3 +54,51 @@ class EmployeeRepository:
             select(EmployeeOrm).order_by(EmployeeOrm.full_name)
         )
         return [employee_to_domain(row) for row in rows]
+
+
+def user_to_domain(row: UserOrm) -> User:
+    """Преобразует строку БД в объект User."""
+    return User(
+        username=row.login,
+        password_hash=row.password_hash,
+        employee_id=row.employee_id,
+        role=Role(row.user_role),
+        id=row.id,
+    )
+
+
+class UserRepository:
+    """Доступ к учётным записям пользователей в базе данных."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def add(self, user: User) -> User:
+        """Сохраняет пользователя в сессии и возвращает его."""
+        row = UserOrm(
+            id=user.id,
+            login=user.username,
+            password_hash=user.password_hash,
+            user_role=user.role.value,
+            employee_id=user.employee_id,
+        )
+        self.session.add(row)
+        self.session.flush()
+        return user_to_domain(row)
+
+    def get_by_username(self, username: str) -> User | None:
+        """Возвращает пользователя по логину или None."""
+        row = self.session.scalar(select(UserOrm).where(UserOrm.login == username))
+        return user_to_domain(row) if row else None
+
+    def get_by_employee_id(self, employee_id: uuid.UUID) -> User | None:
+        """Возвращает учётную запись сотрудника или None."""
+        row = self.session.scalar(
+            select(UserOrm).where(UserOrm.employee_id == employee_id)
+        )
+        return user_to_domain(row) if row else None
+
+    def list_all(self) -> list[User]:
+        """Возвращает всех пользователей, отсортированных по логину."""
+        rows = self.session.scalars(select(UserOrm).order_by(UserOrm.login))
+        return [user_to_domain(row) for row in rows]

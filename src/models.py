@@ -40,10 +40,10 @@ class User:
     """Учётная запись для входа в систему, привязанная к сотруднику."""
 
     username: str
-    password: str
-    employee_id: str
+    password_hash: str
+    employee_id: uuid.UUID
     role: Role
-    id: str = field(default_factory=new_id)
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
 
 
 class ShiftStatus(Enum):
