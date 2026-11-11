@@ -1,7 +1,6 @@
 import os
 from datetime import date, time
 
-# Заглушка адреса БД до любых импортов из src
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://test:test@localhost:5432/test")
 
 from unittest.mock import MagicMock
@@ -49,7 +48,6 @@ def test_report(test_employee: Employee) -> Report:
 def mock_session_factory() -> MagicMock:
     """Фальшивая фабрика сессий для подмены БД."""
     factory = MagicMock()
-    # Настраиваем .begin() как менеджер контекста (with session_factory.begin(): ...)
     session_mock = MagicMock()
     factory.begin.return_value.__enter__.return_value = session_mock
     return factory
