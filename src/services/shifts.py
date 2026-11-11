@@ -5,9 +5,9 @@ from datetime import date, time
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from src import Shift
-from src import EmployeeRepository, ShiftRepository
-from src import validate_shift
+from src.models import Shift
+from src.repositories import EmployeeRepository, ShiftRepository
+from src.validation import validate_shift
 
 
 class ShiftService:

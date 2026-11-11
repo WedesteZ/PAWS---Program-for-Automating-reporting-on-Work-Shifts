@@ -3,11 +3,11 @@ from datetime import date, time
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from src import SessionLocal
-from src import Employee, Report, Shift
-from src import EmployeeService
-from src import ReportService
-from src import ShiftService
+from src.database import SessionLocal
+from src.models import Employee, Report, Shift
+from src.services.employees import EmployeeService
+from src.services.reports import ReportService
+from src.services.shifts import ShiftService
 
 
 class PawsApp:

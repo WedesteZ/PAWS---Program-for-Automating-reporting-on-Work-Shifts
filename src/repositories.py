@@ -4,8 +4,8 @@ from datetime import date, datetime, time, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from src import CompletedWork, Employee, Role, Shift, ShiftStatus, User
-from src import CompletedWorkOrm, EmployeeOrm, ShiftOrm, UserOrm
+from src.models import CompletedWork, Employee, Role, Shift, ShiftStatus, User
+from src.orm_models import CompletedWorkOrm, EmployeeOrm, ShiftOrm, UserOrm
 
 
 def employee_to_domain(row: EmployeeOrm) -> Employee:

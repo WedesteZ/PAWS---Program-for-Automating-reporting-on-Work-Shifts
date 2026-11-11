@@ -9,7 +9,8 @@ import os
 
 from dotenv import load_dotenv
 
-from src import Base
+from src.database import Base
+import src.orm_models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

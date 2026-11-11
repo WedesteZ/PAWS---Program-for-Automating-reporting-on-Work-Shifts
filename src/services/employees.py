@@ -2,9 +2,9 @@
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from src import Employee
-from src import EmployeeRepository
-from src import validate_full_name, validate_position
+from src.models import Employee
+from src.repositories import EmployeeRepository
+from src.validation import validate_full_name, validate_position
 
 
 class EmployeeService:
