@@ -10,6 +10,7 @@ from uuid import UUID
 
 import uvicorn
 from fastapi import Depends, FastAPI, Form, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -49,6 +50,41 @@ async def value_error_handler(request: Request, exc: ValueError):
         return JSONResponse(status_code=status_code, content={"detail": str(exc)})
 
     safe_msg = urllib.parse.quote(str(exc))
+    referer = request.headers.get("referer")
+    base_url = str(request.base_url)
+
+    if not referer or not referer.startswith(base_url):
+        referer = "/"
+    if "?" in referer:
+        referer = referer.split("?")[0]
+
+    return RedirectResponse(
+        url=f"{referer}?error={safe_msg}", status_code=status.HTTP_302_FOUND
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Глобальный перехватчик ошибок валидации Pydantic (422).
+    Форматирует стандартный список ошибок FastAPI в единую понятную строку.
+    """
+    error_messages = []
+    for err in exc.errors():
+        # Собираем путь к полю (например, body.full_name)
+        loc = ".".join(str(x) for x in err["loc"])
+        error_messages.append(f"[{loc}]: {err['msg']}")
+
+    detail_str = "; ".join(error_messages)
+
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"detail": detail_str},
+        )
+
+    # Для UI-форм делаем редирект с текстом ошибки
+    safe_msg = urllib.parse.quote(detail_str)
     referer = request.headers.get("referer")
     base_url = str(request.base_url)
 
