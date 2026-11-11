@@ -1,8 +1,8 @@
 import re
 import uuid
 
-from src.models import Shift
-from src.repositories import EmployeeRepository, ShiftRepository, UserRepository
+from src import Shift
+from src import EmployeeRepository, ShiftRepository, UserRepository
 
 NAME_PATTERN = re.compile(r"^[А-Яа-яЁёA-Za-z\- ]+$")
 USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.\-]{3,30}$")

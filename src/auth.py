@@ -2,11 +2,11 @@ import uuid
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.database import SessionLocal
-from src.models import Role, User
-from src.repositories import EmployeeRepository, UserRepository
-from src.security import hash_password, verify_password
-from src.validation import validate_user
+from src import SessionLocal
+from src import Role, User
+from src import EmployeeRepository, UserRepository
+from src import hash_password, verify_password
+from src import validate_user
 
 
 class AuthManager:

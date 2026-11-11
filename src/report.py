@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 
-from src.models import Employee, Report, ReportRow, Shift
+from src import Employee, Report, ReportRow, Shift
 
 
 class ReportBuilder:

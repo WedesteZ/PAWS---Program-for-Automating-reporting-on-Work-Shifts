@@ -1,8 +1,8 @@
 from datetime import date, time
 
-from src.app import PawsApp
-from src.auth import AuthManager
-from src.models import Role
+from src import PawsApp
+from src import AuthManager
+from src import Role
 
 
 def seed_demo_data(app: PawsApp, auth: AuthManager) -> None:

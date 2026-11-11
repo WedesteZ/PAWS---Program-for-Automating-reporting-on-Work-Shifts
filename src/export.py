@@ -14,7 +14,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from src.models import Report
+from src import Report
 
 FONT_PATH = Path(__file__).resolve().parent.parent / "DejaVuSans.ttf"
 HEADERS = ["Дата", "Сотрудник", "Начало", "Конец", "Часы", "Описание"]
