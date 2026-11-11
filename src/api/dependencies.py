@@ -18,6 +18,7 @@ def RoleChecker(allowed_roles: list[str]):
     """Генератор зависимостей для проверки ролей (RBAC)."""
 
     def role_dependency(request: Request, user: str = Depends(get_current_user)) -> str:
+        """Проверяет наличие необходимой роли у текущего пользователя."""
         role = request.session.get("role", "employee")
         if role not in allowed_roles:
             raise HTTPException(

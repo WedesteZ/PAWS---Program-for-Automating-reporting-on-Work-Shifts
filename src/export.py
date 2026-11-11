@@ -127,6 +127,7 @@ class PdfExporter(Exporter):
         head_style = ParagraphStyle("head", parent=text_style, textColor=colors.white)
 
         def cell(value: object, style: ParagraphStyle = text_style) -> Paragraph:
+            """Записывает значение и применяет форматирование к ячейке отчета."""
             return Paragraph(escape(str(value)), style)
 
         data = [[cell(h, head_style) for h in HEADERS]]
