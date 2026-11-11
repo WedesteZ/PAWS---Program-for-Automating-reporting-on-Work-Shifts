@@ -21,7 +21,9 @@ def login(credentials: LoginRequest, request: Request) -> UserOut:
     try:
         user = auth_manager.login(credentials.username, credentials.password)
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)
+        ) from None
 
     request.session["user"] = getattr(user, "username", str(user))
     request.session["role"] = user.role.value
