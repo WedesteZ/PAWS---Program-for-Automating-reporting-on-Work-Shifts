@@ -4,36 +4,29 @@ import os
 import shutil
 import tempfile
 import urllib.parse
-from datetime import date, time
+from datetime import date
 from uuid import UUID
 
 import uvicorn
 from fastapi import Depends, FastAPI, Form, Request, status
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.background import BackgroundTask
 from starlette.middleware.sessions import SessionMiddleware
 
-from src import PawsApp
-from src import AuthManager
-from src import seed_demo_data
-from src import Report
-
-# Импортируем наши REST-роутеры для API
+from src.api.auth import router as auth_router
 from src.api.employees import router as employees_router
-from src.api.shifts import router as shifts_router
 from src.api.reports import router as reports_router
+from src.api.shifts import router as shifts_router
+from src.container import auth_manager, paws_core
+from src.report import Report
 
 logger = logging.getLogger(__name__)
 
-paws_core = PawsApp()
-auth_manager = AuthManager()
-seed_demo_data(paws_core, auth_manager)
-
 app = FastAPI(title="PAWS Web")
 
-# Подключаем API
+app.include_router(auth_router)
 app.include_router(employees_router)
 app.include_router(shifts_router)
 app.include_router(reports_router)
@@ -41,37 +34,35 @@ app.include_router(reports_router)
 
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError):
-    """
-    Глобальный перехватчик ValueError из сервисного слоя (paws_core).
-    Для API-запросов возвращает JSON с нужным HTTP-статусом.
-    """
+    """Глобальный перехватчик ValueError из сервисного слоя."""
     error_msg = str(exc).lower()
 
-    # Определяем статус-код по тексту ошибки из сервисов/валидаторов
-    if "пересекается" in error_msg or "совпадает" in error_msg:
+    if any(k in error_msg for k in ["пересекается", "совпадает", "уже существует"]):
         status_code = status.HTTP_409_CONFLICT
-    elif "не найден" in error_msg or "существует" in error_msg:
+    elif "не найден" in error_msg:
         status_code = status.HTTP_404_NOT_FOUND
     else:
         status_code = status.HTTP_400_BAD_REQUEST
 
-    # Если запрос пришел на REST API, отдаем JSON
     if request.url.path.startswith("/api/"):
-        return JSONResponse(
-            status_code=status_code,
-            content={"detail": str(exc)},
-        )
+        return JSONResponse(status_code=status_code, content={"detail": str(exc)})
 
-    # Если запрос пришел от HTML-формы (веб-сайт), делаем редирект назад с ошибкой
     safe_msg = urllib.parse.quote(str(exc))
-    referer = request.headers.get("referer", "/")
-    # Защита от зацикливания
+
+    # Безопасный редирект (защита от увода на сторонние сайты через Referer)
+    referer = request.headers.get("referer")
+    base_url = str(request.base_url)
+    if not referer or not referer.startswith(base_url):
+        referer = "/"
     if "?" in referer:
         referer = referer.split("?")[0]
-    return RedirectResponse(url=f"{referer}?error={safe_msg}", status_code=status.HTTP_302_FOUND)
+
+    return RedirectResponse(
+        url=f"{referer}?error={safe_msg}", status_code=status.HTTP_302_FOUND
+    )
 
 
-secret = os.environ["SESSION_SECRET"]
+secret = os.environ.get("SESSION_SECRET", "super-secret-default")
 app.add_middleware(SessionMiddleware, secret_key=secret)
 
 app.mount("/static", StaticFiles(directory="web"), name="static")
@@ -100,7 +91,6 @@ async def login_post(
         user = auth_manager.login(username, password)
         request.session["user"] = getattr(user, "username", str(user))
         request.session["role"] = user.role.value
-        # Сохраняем ID сотрудника для генерации его личных отчетов
         request.session["user_id"] = str(user.employee_id)
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     except ValueError as e:
@@ -162,7 +152,7 @@ async def add_shift(
     description: str = Form(""),
     current_user: str = Depends(get_current_user),
 ):
-    """Добавляет новую смену в систему."""
+    """Добавляет новую смену через веб-интерфейс."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -223,7 +213,7 @@ async def add_employee(
     position: str = Form(""),
     current_user: str = Depends(get_current_user),
 ):
-    """Создает нового сотрудника."""
+    """Создает нового сотрудника через веб-интерфейс."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -249,10 +239,7 @@ async def add_employee(
 def export_response(
     report: Report, fmt: str, date_from: date, date_to: date
 ) -> FileResponse:
-    """Сохраняет отчёт во временный файл и отдаёт его на скачивание.
-
-    Временная папка удаляется после отправки файла.
-    """
+    """Сохраняет отчёт во временный файл и отдаёт его на скачивание."""
     download_name = f"report_{date_from}_{date_to}.{fmt}"
     tmp_dir = tempfile.mkdtemp(prefix="paws_")
     path = os.path.join(tmp_dir, download_name)
@@ -293,7 +280,7 @@ async def reports_page(
 
 
 @app.post("/reports/generate")
-async def generate_report(
+async def generate_report_ui(
     request: Request,
     date_from: str = Form(...),
     date_to: str = Form(...),
@@ -301,22 +288,26 @@ async def generate_report(
     export_format: str = Form(""),
     current_user: str = Depends(get_current_user),
 ):
-    """Генерирует и при необходимости экспортирует отчет за период."""
+    """Генерирует отчет через веб-интерфейс."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    user_role = request.session.get("role", "employee")
+
+    # Безопасность: перехватываем подмену скрытого поля в HTML
+    if user_role not in ["admin", "manager"]:
+        target_uuid = UUID(request.session.get("user_id"))
+    else:
+        target_uuid = UUID(employee_id.strip()) if employee_id and employee_id.strip() else None
 
     employees = paws_core.list_employees()
 
     try:
-        emp_uuid = None
-        if employee_id and employee_id.strip():
-            emp_uuid = UUID(employee_id.strip())
-
         d_from = date.fromisoformat(date_from)
         d_to = date.fromisoformat(date_to)
 
         report = paws_core.generate_report(
-            date_from=d_from, date_to=d_to, employee_id=emp_uuid
+            date_from=d_from, date_to=d_to, employee_id=target_uuid
         )
 
         if export_format:
