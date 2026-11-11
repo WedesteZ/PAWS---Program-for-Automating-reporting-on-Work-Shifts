@@ -5,12 +5,16 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserOut(BaseModel):
+    """Модель ответа с данными авторизованного пользователя."""
+
     model_config = ConfigDict(from_attributes=True)
     username: str = Field(..., description="Логин пользователя", examples=["ivanov"])
     role: str = Field(..., description="Роль пользователя", examples=["admin"])
 
 
 class EmployeeOut(BaseModel):
+    """Модель ответа с публичными данными сотрудника."""
+
     model_config = ConfigDict(from_attributes=True)
     id: UUID = Field(
         ...,
@@ -22,6 +26,8 @@ class EmployeeOut(BaseModel):
 
 
 class ShiftOut(BaseModel):
+    """Модель ответа с информацией о рабочей смене."""
+
     model_config = ConfigDict(from_attributes=True)
     id: UUID = Field(
         ...,
@@ -42,6 +48,8 @@ class ShiftOut(BaseModel):
 
 
 class ReportRowOut(BaseModel):
+    """Модель строки отчета по конкретной смене."""
+
     model_config = ConfigDict(from_attributes=True)
     shift_date: date = Field(..., description="Дата", examples=["2026-11-12"])
     employee: str = Field(
@@ -56,6 +64,8 @@ class ReportRowOut(BaseModel):
 
 
 class ReportOut(BaseModel):
+    """Модель ответа с агрегированным отчетом за период."""
+
     model_config = ConfigDict(from_attributes=True)
     title: str = Field(
         ..., description="Заголовок отчета", examples=["Отчет по отработанному времени"]

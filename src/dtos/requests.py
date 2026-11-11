@@ -1,11 +1,12 @@
 from datetime import date, time
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class LoginRequest(BaseModel):
+    """Модель запроса для авторизации пользователя."""
+
     username: str = Field(
         ...,
         min_length=3,
@@ -20,10 +21,13 @@ class LoginRequest(BaseModel):
     @field_validator("username")
     @classmethod
     def strip_username(cls, v: str) -> str:
+        """Очищает логин от лишних пробелов."""
         return v.strip()
 
 
 class EmployeeCreate(BaseModel):
+    """Модель запроса для создания нового сотрудника."""
+
     full_name: str = Field(
         ...,
         min_length=2,
@@ -38,10 +42,13 @@ class EmployeeCreate(BaseModel):
     @field_validator("full_name", "position")
     @classmethod
     def strip_strings(cls, v: str) -> str:
+        """Очищает строки от начальных и конечных пробелов."""
         return v.strip()
 
 
 class ShiftCreate(BaseModel):
+    """Модель запроса для добавления новой смены."""
+
     employee_id: UUID = Field(
         ...,
         description="ID сотрудника",
@@ -60,12 +67,15 @@ class ShiftCreate(BaseModel):
 
     @model_validator(mode="after")
     def check_time(self) -> "ShiftCreate":
+        """Проверяет, что время начала и окончания смены не совпадает."""
         if self.time_start == self.time_end:
             raise ValueError("Время начала и окончания смены не может совпадать.")
         return self
 
 
 class ReportRequest(BaseModel):
+    """Модель запроса для генерации отчета по сменам."""
+
     date_from: date = Field(..., description="Начало периода", examples=["2026-11-01"])
     date_to: date = Field(..., description="Конец периода", examples=["2026-11-30"])
     employee_id: UUID | None = Field(
@@ -73,12 +83,10 @@ class ReportRequest(BaseModel):
         description="Фильтр по ID сотрудника",
         examples=["123e4567-e89b-12d3-a456-426614174000"],
     )
-    export_format: Literal["pdf", "xlsx"] | None = Field(
-        None, description="Формат экспорта (если нужен файл)", examples=["pdf"]
-    )
 
     @model_validator(mode="after")
     def check_dates(self) -> "ReportRequest":
+        """Проверяет, что дата начала периода не превышает дату окончания."""
         if self.date_from > self.date_to:
             raise ValueError(
                 "Дата начала (date_from) не может быть позже даты окончания (date_to)."
