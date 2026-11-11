@@ -10,37 +10,42 @@
     <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
 
     <!-- Форма добавления сотрудника -->
-    <div style="background: #f9f9f9; padding: 20px; border-radius: 6px; margin-bottom: 30px; border: 1px solid #e1e1e1;">
-        <h3>Добавить нового сотрудника</h3>
-        <form method="POST" action="/employees/add" style="display: flex; gap: 15px; align-items: flex-end;">
+{% if request.session.get('role') in ['admin', 'manager'] %}
+<div style="background: #f9f9f9; padding: 20px; border-radius: 6px; margin-bottom: 30px; border: 1px solid #e1e1e1;">
+    <h3>Добавить нового сотрудника</h3>
+    <form method="POST" action="/employees/add" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
             <div class="form-group" style="flex: 2; margin-bottom: 0;">
                 <label>ФИО сотрудника:</label>
-                <input type="text" name="full_name" required placeholder="Иванов Иван Иванович">
+                <!-- Убрал дублирующийся required -->
+                <input type="text" name="full_name" placeholder="Иванов Иван Иванович" required style="width: 100%;">
             </div>
             <div class="form-group" style="flex: 1; margin-bottom: 0;">
                 <label>Должность:</label>
-                <input type="text" name="position" placeholder="Разработчик / Менеджер">
+                <!-- required уже на месте -->
+                <input type="text" name="position" placeholder="Разработчик / Менеджер" required style="width: 100%;">
             </div>
             <button type="submit" class="btn" style="background: #2ecc71; height: 38px;">Добавить</button>
         </form>
     </div>
+{% endif %}
 
     <h3>Список сотрудников</h3>
     {% if employees and employees|length > 0 %}
-        <table>
+        <table style="width: 100%; table-layout: fixed;">
             <thead>
                 <tr>
-                    <th>ФИО</th>
-                    <th>Должность</th>
-                    <th>ID</th>
+                    <th style="width: 40%;">ФИО</th>
+                    <th style="width: 30%;">Должность</th>
+                    <th style="width: 30%;">ID</th>
                 </tr>
             </thead>
             <tbody>
                 {% for emp in employees %}
                 <tr>
-                    <td><strong>{{ emp.full_name }}</strong></td>
-                    <td>{{ emp.position or 'Не указана' }}</td>
-                    <td style="color: #888; font-size: 12px;">{{ emp.id }}</td>
+                    <!-- Стили применены к нужным ячейкам -->
+                    <td style="word-wrap: break-word; max-width: 150px; overflow: hidden;"><strong>{{ emp.full_name }}</strong></td>
+                    <td style="word-wrap: break-word; max-width: 150px; overflow: hidden;">{{ emp.position or 'Не указана' }}</td>
+                    <td style="word-wrap: break-word; max-width: 150px; overflow: hidden; font-size: 0.85em; color: #666;">{{ emp.id }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

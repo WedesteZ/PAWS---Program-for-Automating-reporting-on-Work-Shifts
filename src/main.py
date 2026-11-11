@@ -9,16 +9,21 @@ from uuid import UUID
 
 import uvicorn
 from fastapi import Depends, FastAPI, Form, Request, status
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.background import BackgroundTask
 from starlette.middleware.sessions import SessionMiddleware
 
-from src.app import PawsApp
-from src.auth import AuthManager
-from src.demo import seed_demo_data
-from src.models import Report
+from src import PawsApp
+from src import AuthManager
+from src import seed_demo_data
+from src import Report
+
+# Импортируем наши REST-роутеры для API
+from src.api.employees import router as employees_router
+from src.api.shifts import router as shifts_router
+from src.api.reports import router as reports_router
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +32,44 @@ auth_manager = AuthManager()
 seed_demo_data(paws_core, auth_manager)
 
 app = FastAPI(title="PAWS Web")
+
+# Подключаем API
+app.include_router(employees_router)
+app.include_router(shifts_router)
+app.include_router(reports_router)
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    """
+    Глобальный перехватчик ValueError из сервисного слоя (paws_core).
+    Для API-запросов возвращает JSON с нужным HTTP-статусом.
+    """
+    error_msg = str(exc).lower()
+
+    # Определяем статус-код по тексту ошибки из сервисов/валидаторов
+    if "пересекается" in error_msg or "совпадает" in error_msg:
+        status_code = status.HTTP_409_CONFLICT
+    elif "не найден" in error_msg or "существует" in error_msg:
+        status_code = status.HTTP_404_NOT_FOUND
+    else:
+        status_code = status.HTTP_400_BAD_REQUEST
+
+    # Если запрос пришел на REST API, отдаем JSON
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            status_code=status_code,
+            content={"detail": str(exc)},
+        )
+
+    # Если запрос пришел от HTML-формы (веб-сайт), делаем редирект назад с ошибкой
+    safe_msg = urllib.parse.quote(str(exc))
+    referer = request.headers.get("referer", "/")
+    # Защита от зацикливания
+    if "?" in referer:
+        referer = referer.split("?")[0]
+    return RedirectResponse(url=f"{referer}?error={safe_msg}", status_code=status.HTTP_302_FOUND)
+
 
 secret = os.environ["SESSION_SECRET"]
 app.add_middleware(SessionMiddleware, secret_key=secret)
@@ -57,6 +100,8 @@ async def login_post(
         user = auth_manager.login(username, password)
         request.session["user"] = getattr(user, "username", str(user))
         request.session["role"] = user.role.value
+        # Сохраняем ID сотрудника для генерации его личных отчетов
+        request.session["user_id"] = str(user.employee_id)
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     except ValueError as e:
         return templates.TemplateResponse(

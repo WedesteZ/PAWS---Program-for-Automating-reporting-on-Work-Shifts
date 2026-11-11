@@ -23,12 +23,18 @@
             </div>
             <div class="form-group">
                 <label>Сотрудник:</label>
-                <select name="employee_id">
-                    <option value="">Все сотрудники</option>
-                    {% for emp in employees %}
-                    <option value="{{ emp.id }}" {% if emp.id|string == selected_employee %}selected{% endif %}>{{ emp.full_name }}</option>
-                    {% endfor %}
-                </select>
+                {% if request.session.get('role') in ['admin', 'manager'] %}
+                    <select name="employee_id">
+                        <option value="">Все сотрудники</option>
+                        {% for emp in employees %}
+                        <option value="{{ emp.id }}" {% if emp.id|string == selected_employee %}selected{% endif %}>{{ emp.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                {% else %}
+                    <!-- Обычный сотрудник генерирует отчет только для себя -->
+                    <input type="hidden" name="employee_id" value="{{ request.session.get('user_id') }}">
+                    <input type="text" value="{{ request.session.get('user') }}" disabled style="width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; background-color: #e9ecef;">
+                {% endif %}
             </div>
             <div class="form-group">
                 <label>Формат экспорта:</label>

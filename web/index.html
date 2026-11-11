@@ -10,6 +10,7 @@
     <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
 
     <!-- Форма добавления смены -->
+    {% if request.session.get('role') in ['admin', 'manager'] %}
     <div style="background: #f9f9f9; padding: 20px; border-radius: 6px; margin-bottom: 30px; border: 1px solid #e1e1e1;">
         <h3>Добавить новую смену</h3>
         <form method="POST" action="/shifts/add">
@@ -43,6 +44,7 @@
             <button type="submit" class="btn" style="background: #2ecc71;">Сохранить смену</button>
         </form>
     </div>
+    {% endif %}
 
     <!-- Фильтр по сотрудникам -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
