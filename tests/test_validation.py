@@ -1,4 +1,5 @@
 import pytest
+
 from src.validation import (
     validate_full_name,
     validate_password,

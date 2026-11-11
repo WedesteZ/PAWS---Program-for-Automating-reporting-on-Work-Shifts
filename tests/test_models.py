@@ -3,6 +3,7 @@ from datetime import date, datetime, time
 
 from src.models import Shift
 
+
 def test_shift_from_times_normal():
     """Проверка обычной дневной смены"""
     shift = Shift.from_times(

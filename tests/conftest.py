@@ -37,7 +37,8 @@ def test_report(test_employee: Employee) -> Report:
         description="Тестовая работа"
     )
     return Report(
-        text="Тестовый отчёт",
+        title="Тестовый отчёт",
+        period="11.11.2026 - 11.11.2026",
         rows=[row],
         total_shifts=1,
         total_hours=9.0
