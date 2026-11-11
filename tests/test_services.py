@@ -37,8 +37,7 @@ def test_employee_service_add_normalizes_spaces(monkeypatch, mock_session_factor
     mock_repo.add.side_effect = lambda employee: employee
 
     monkeypatch.setattr(
-        "src.services.employees.EmployeeRepository",
-        MagicMock(return_value=mock_repo)
+        "src.services.employees.EmployeeRepository", MagicMock(return_value=mock_repo)
     )
 
     service = EmployeeService(mock_session_factory)
@@ -53,8 +52,7 @@ def test_shift_service_add_employee_not_found(monkeypatch, mock_session_factory)
     mock_emp_repo = MagicMock()
     mock_emp_repo.get.return_value = None
     monkeypatch.setattr(
-        "src.services.shifts.EmployeeRepository",
-        MagicMock(return_value=mock_emp_repo)
+        "src.services.shifts.EmployeeRepository", MagicMock(return_value=mock_emp_repo)
     )
 
     service = ShiftService(mock_session_factory)
@@ -64,7 +62,7 @@ def test_shift_service_add_employee_not_found(monkeypatch, mock_session_factory)
             employee_id=uuid.uuid4(),
             shift_date=date(2026, 11, 11),
             start=time(9, 0),
-            end=time(18, 0)
+            end=time(18, 0),
         )
 
 
@@ -73,15 +71,13 @@ def test_shift_service_add_overlapping(monkeypatch, mock_session_factory, test_s
     mock_emp_repo = MagicMock()
     mock_emp_repo.get.return_value = MagicMock()
     monkeypatch.setattr(
-        "src.services.shifts.EmployeeRepository",
-        MagicMock(return_value=mock_emp_repo)
+        "src.services.shifts.EmployeeRepository", MagicMock(return_value=mock_emp_repo)
     )
 
     mock_shift_repo = MagicMock()
     mock_shift_repo.find_overlapping.return_value = [test_shift]
     monkeypatch.setattr(
-        "src.services.shifts.ShiftRepository",
-        MagicMock(return_value=mock_shift_repo)
+        "src.services.shifts.ShiftRepository", MagicMock(return_value=mock_shift_repo)
     )
 
     service = ShiftService(mock_session_factory)
@@ -91,7 +87,7 @@ def test_shift_service_add_overlapping(monkeypatch, mock_session_factory, test_s
             employee_id=uuid.uuid4(),
             shift_date=date(2026, 11, 11),
             start=time(9, 0),
-            end=time(18, 0)
+            end=time(18, 0),
         )
 
 
@@ -100,15 +96,13 @@ def test_shift_service_add_success(monkeypatch, mock_session_factory):
     mock_emp_repo = MagicMock()
     mock_emp_repo.get.return_value = MagicMock()
     monkeypatch.setattr(
-        "src.services.shifts.EmployeeRepository",
-        MagicMock(return_value=mock_emp_repo)
+        "src.services.shifts.EmployeeRepository", MagicMock(return_value=mock_emp_repo)
     )
 
     mock_shift_repo = MagicMock()
     mock_shift_repo.find_overlapping.return_value = []
     monkeypatch.setattr(
-        "src.services.shifts.ShiftRepository",
-        MagicMock(return_value=mock_shift_repo)
+        "src.services.shifts.ShiftRepository", MagicMock(return_value=mock_shift_repo)
     )
 
     service = ShiftService(mock_session_factory)
@@ -117,7 +111,7 @@ def test_shift_service_add_success(monkeypatch, mock_session_factory):
         employee_id=uuid.uuid4(),
         shift_date=date(2026, 11, 11),
         start=time(9, 0),
-        end=time(18, 0)
+        end=time(18, 0),
     )
 
     assert shift is not None
@@ -129,10 +123,7 @@ def test_report_service_generate_invalid_dates(mock_session_factory):
     service = ReportService(mock_session_factory)
 
     with pytest.raises(ValueError):
-        service.generate(
-            date_from=date(2026, 11, 15),
-            date_to=date(2026, 11, 10)
-        )
+        service.generate(date_from=date(2026, 11, 15), date_to=date(2026, 11, 10))
 
 
 def test_report_service_generate_success(monkeypatch, mock_session_factory):
@@ -140,34 +131,28 @@ def test_report_service_generate_success(monkeypatch, mock_session_factory):
     mock_shift_repo = MagicMock()
     mock_shift_repo.get_for_period.return_value = []
     monkeypatch.setattr(
-        "src.services.reports.ShiftRepository",
-        MagicMock(return_value=mock_shift_repo)
+        "src.services.reports.ShiftRepository", MagicMock(return_value=mock_shift_repo)
     )
 
     mock_emp_repo = MagicMock()
     mock_emp_repo.get_all.return_value = {}
     monkeypatch.setattr(
-        "src.services.reports.EmployeeRepository",
-        MagicMock(return_value=mock_emp_repo)
+        "src.services.reports.EmployeeRepository", MagicMock(return_value=mock_emp_repo)
     )
 
     service = ReportService(mock_session_factory)
 
     report_all = service.generate(
-        date_from=date(2026, 11, 1),
-        date_to=date(2026, 11, 30)
+        date_from=date(2026, 11, 1), date_to=date(2026, 11, 30)
     )
     assert len(report_all.title) > 0
 
     emp_id = uuid.uuid4()
     mock_emp_repo.get.return_value = Employee(
-        full_name="Иванов Иван",
-        position="Оператор"
+        full_name="Иванов Иван", position="Оператор"
     )
 
     report_one = service.generate(
-        date_from=date(2026, 11, 1),
-        date_to=date(2026, 11, 30),
-        employee_id=emp_id
+        date_from=date(2026, 11, 1), date_to=date(2026, 11, 30), employee_id=emp_id
     )
     assert len(report_one.title) > 0

@@ -1,4 +1,5 @@
 """Модели ответов (DTO) для REST API."""
+
 from datetime import date, time
 from uuid import UUID
 

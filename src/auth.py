@@ -12,9 +12,7 @@ from src.validation import validate_user
 class AuthManager:
     """Управление учётными записями пользователей системы."""
 
-    def __init__(
-        self, session_factory: sessionmaker[Session] = SessionLocal
-    ) -> None:
+    def __init__(self, session_factory: sessionmaker[Session] = SessionLocal) -> None:
         self.session_factory = session_factory
 
     def add_user(

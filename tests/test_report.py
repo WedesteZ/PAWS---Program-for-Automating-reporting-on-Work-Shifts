@@ -27,13 +27,13 @@ def test_report_builder_two_shifts():
         employee_id=emp_id,
         shift_date=date(2026, 11, 11),
         start=time(9, 0),
-        end=time(13, 0)
+        end=time(13, 0),
     )
     shift2 = Shift.from_times(
         employee_id=emp_id,
         shift_date=date(2026, 11, 12),
         start=time(10, 0),
-        end=time(18, 0)
+        end=time(18, 0),
     )
 
     builder = ReportBuilder()
@@ -54,7 +54,7 @@ def test_report_builder_unknown_employee():
         employee_id=uuid.uuid4(),
         shift_date=date(2026, 11, 11),
         start=time(9, 0),
-        end=time(18, 0)
+        end=time(18, 0),
     )
 
     builder = ReportBuilder()
@@ -69,9 +69,7 @@ def test_report_builder_header():
     """period в формате ДД.ММ.ГГГГ - ДД.ММ.ГГГГ, title совпадает с переданным"""
     builder = ReportBuilder()
     builder.add_header(
-        title="Ежемесячный отчёт",
-        date_from=date(2026, 1, 5),
-        date_to=date(2026, 1, 15)
+        title="Ежемесячный отчёт", date_from=date(2026, 1, 5), date_to=date(2026, 1, 15)
     )
     report = builder.build()
 

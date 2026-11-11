@@ -16,6 +16,7 @@ def get_current_user(request: Request) -> str:
 
 def RoleChecker(allowed_roles: list[str]):
     """Генератор зависимостей для проверки ролей (RBAC)."""
+
     def role_dependency(request: Request, user: str = Depends(get_current_user)) -> str:
         role = request.session.get("role", "employee")
         if role not in allowed_roles:
@@ -24,7 +25,9 @@ def RoleChecker(allowed_roles: list[str]):
                 detail="Недостаточно прав для выполнения операции",
             )
         return role
+
     return role_dependency
+
 
 # Готовые зависимости для инъекций
 CurrentUser = Annotated[str, Depends(get_current_user)]

@@ -1,4 +1,5 @@
 """Главный модуль веб-интерфейса PAWS."""
+
 import logging
 import os
 import shutil

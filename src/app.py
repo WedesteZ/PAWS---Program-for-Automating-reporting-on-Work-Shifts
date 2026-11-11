@@ -13,9 +13,7 @@ from src.services.shifts import ShiftService
 class PawsApp:
     """Фасад над сервисами: сотрудники, смены и отчёты."""
 
-    def __init__(
-        self, session_factory: sessionmaker[Session] = SessionLocal
-    ) -> None:
+    def __init__(self, session_factory: sessionmaker[Session] = SessionLocal) -> None:
         self.session_factory = session_factory
         self.employees = EmployeeService(session_factory)
         self.shifts = ShiftService(session_factory)

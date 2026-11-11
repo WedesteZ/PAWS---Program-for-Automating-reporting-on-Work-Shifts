@@ -1,4 +1,5 @@
 """API роутер для аутентификации."""
+
 from fastapi import APIRouter, HTTPException, Request, status
 
 from src.container import auth_manager

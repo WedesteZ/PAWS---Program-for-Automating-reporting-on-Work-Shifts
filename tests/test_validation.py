@@ -14,83 +14,114 @@ from src.validation import (
 )
 
 
-@pytest.mark.parametrize("name", [
-    "Иванов Иван",
-    "Иван " + "А" * 145,
-    "Салтыков-Щедрин Михаил",
-    "John Doe",
-])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Иванов Иван",
+        "Иван " + "А" * 145,
+        "Салтыков-Щедрин Михаил",
+        "John Doe",
+    ],
+)
 def test_validate_full_name_valid(name: str):
     """Проверки корректных данных: список ошибок должен быть пустым"""
     errors = validate_full_name(name)
     assert not errors
 
-@pytest.mark.parametrize("name", [
-    "",
-    "Иванов",
-    "А" * 151,
-    "Иван123",
-    "Иван@Иванов",
-])
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "",
+        "Иванов",
+        "А" * 151,
+        "Иван123",
+        "Иван@Иванов",
+    ],
+)
 def test_validate_full_name_invalid(name: str):
     """Некорректное ФИО"""
     errors = validate_full_name(name)
     assert errors
 
-@pytest.mark.parametrize("position", [
-    "Оператор",
-    "А" * 50,
-])
+
+@pytest.mark.parametrize(
+    "position",
+    [
+        "Оператор",
+        "А" * 50,
+    ],
+)
 def test_validate_position_valid(position: str):
     """Корректная должность"""
     errors = validate_position(position)
     assert not errors
 
-@pytest.mark.parametrize("position", [
-    "",
-    "А" * 51,
-])
+
+@pytest.mark.parametrize(
+    "position",
+    [
+        "",
+        "А" * 51,
+    ],
+)
 def test_validate_position_invalid(position: str):
     """Некорректная должность"""
     errors = validate_position(position)
     assert errors
 
-@pytest.mark.parametrize("username", [
-    "usr",
-    "a" * 30,
-    "user_name",
-    "user123",
-])
+
+@pytest.mark.parametrize(
+    "username",
+    [
+        "usr",
+        "a" * 30,
+        "user_name",
+        "user123",
+    ],
+)
 def test_validate_username_valid(username: str):
     """Корректный логин"""
     errors = validate_username(username)
     assert not errors
 
-@pytest.mark.parametrize("username", [
-    "ab",
-    "a" * 31,
-    "пользователь",
-    "user name",
-])
+
+@pytest.mark.parametrize(
+    "username",
+    [
+        "ab",
+        "a" * 31,
+        "пользователь",
+        "user name",
+    ],
+)
 def test_validate_username_invalid(username: str):
     """Некорректный логин"""
     errors = validate_username(username)
     assert errors
 
-@pytest.mark.parametrize("password", [
-    "pass",
-    "a" * 64,
-])
+
+@pytest.mark.parametrize(
+    "password",
+    [
+        "pass",
+        "a" * 64,
+    ],
+)
 def test_validate_password_valid(password: str):
     """Корректный пароль"""
     errors = validate_password(password)
     assert not errors
 
-@pytest.mark.parametrize("password", [
-    "",
-    "123",
-    "a" * 65,
-])
+
+@pytest.mark.parametrize(
+    "password",
+    [
+        "",
+        "123",
+        "a" * 65,
+    ],
+)
 def test_validate_password_invalid(password: str):
     """Некорректный пароль"""
     errors = validate_password(password)
@@ -101,6 +132,7 @@ def test_validate_password_invalid(password: str):
 # ШАГ 2: Валидаторы с подставными репозиториями
 # ==========================================
 
+
 def test_validate_shift_employee_not_found(test_shift):
     """Сотрудник не найден (employees.get возвращает None)"""
     emp_repo = MagicMock()
@@ -109,6 +141,7 @@ def test_validate_shift_employee_not_found(test_shift):
 
     errors = validate_shift(test_shift, emp_repo, shift_repo)
     assert errors
+
 
 def test_validate_shift_overlapping(test_shift):
     """Пересечение (find_overlapping возвращает смену)"""
@@ -119,6 +152,7 @@ def test_validate_shift_overlapping(test_shift):
 
     errors = validate_shift(test_shift, emp_repo, shift_repo)
     assert errors
+
 
 def test_validate_shift_too_long(test_shift):
     """Смена больше 24 часов"""
@@ -132,6 +166,7 @@ def test_validate_shift_too_long(test_shift):
     errors = validate_shift(test_shift, emp_repo, shift_repo)
     assert errors
 
+
 def test_validate_shift_valid(test_shift):
     """Всё корректно, пустой список ошибок"""
     emp_repo = MagicMock()
@@ -141,6 +176,7 @@ def test_validate_shift_valid(test_shift):
 
     errors = validate_shift(test_shift, emp_repo, shift_repo)
     assert not errors
+
 
 def test_validate_user_login_taken():
     """Логин занят (users.get_by_username возвращает пользователя)"""

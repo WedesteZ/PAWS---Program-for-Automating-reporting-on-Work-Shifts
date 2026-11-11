@@ -51,9 +51,7 @@ class EmployeeRepository:
 
     def list_all(self) -> list[Employee]:
         """Возвращает всех сотрудников, отсортированных по ФИО."""
-        rows = self.session.scalars(
-            select(EmployeeOrm).order_by(EmployeeOrm.full_name)
-        )
+        rows = self.session.scalars(select(EmployeeOrm).order_by(EmployeeOrm.full_name))
         return [employee_to_domain(row) for row in rows]
 
 

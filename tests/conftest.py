@@ -1,7 +1,9 @@
 import os
 from datetime import date, time
 
-os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://test:test@localhost:5432/test")
+os.environ.setdefault(
+    "DATABASE_URL", "postgresql+psycopg://test:test@localhost:5432/test"
+)
 
 from unittest.mock import MagicMock
 
@@ -22,7 +24,7 @@ def test_shift(test_employee: Employee) -> Shift:
         shift_date=date(2026, 11, 11),
         start=time(9, 0),
         end=time(18, 0),
-        description="Тестовая работа"
+        description="Тестовая работа",
     )
 
 
@@ -34,14 +36,14 @@ def test_report(test_employee: Employee) -> Report:
         time_start=time(9, 0),
         time_end=time(18, 0),
         hours=9.0,
-        description="Тестовая работа"
+        description="Тестовая работа",
     )
     return Report(
         title="Тестовый отчёт",
         period="11.11.2026 - 11.11.2026",
         rows=[row],
         total_shifts=1,
-        total_hours=9.0
+        total_hours=9.0,
     )
 
 

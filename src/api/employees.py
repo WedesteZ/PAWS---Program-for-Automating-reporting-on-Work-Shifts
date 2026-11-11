@@ -1,4 +1,5 @@
 """API роутер для управления сотрудниками."""
+
 from fastapi import APIRouter
 
 from src.api.dependencies import CurrentUser, RequireManagerOrAdmin
@@ -33,7 +34,9 @@ def get_employees(_: CurrentUser) -> list[EmployeeOut]:
         422: {"description": "Ошибка формата данных"},
     },
 )
-def create_employee(employee_in: EmployeeCreate, _: RequireManagerOrAdmin) -> EmployeeOut:
+def create_employee(
+    employee_in: EmployeeCreate, _: RequireManagerOrAdmin
+) -> EmployeeOut:
     """Создает сотрудника и возвращает его данные."""
     new_emp = paws_core.add_employee(
         full_name=employee_in.full_name, position=employee_in.position

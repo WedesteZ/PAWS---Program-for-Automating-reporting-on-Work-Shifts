@@ -1,4 +1,5 @@
 """Контейнер зависимостей приложения."""
+
 from src.app import PawsApp
 from src.auth import AuthManager
 from src.demo import seed_demo_data

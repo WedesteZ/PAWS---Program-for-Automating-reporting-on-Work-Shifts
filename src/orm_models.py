@@ -20,9 +20,7 @@ class CompletedWorkOrm(Base):
 
     __tablename__ = "completed_works"
     __table_args__ = (
-        CheckConstraint(
-            "description <> ''", name="completed_works_description_check"
-        ),
+        CheckConstraint("description <> ''", name="completed_works_description_check"),
         Index("completed_works_shift_idx", "shift_id"),
     )
 
@@ -45,9 +43,7 @@ class EmployeeOrm(Base):
     """Сотрудник."""
 
     __tablename__ = "employees"
-    __table_args__ = (
-        CheckConstraint("full_name <> ''", name="employees_name_check"),
-    )
+    __table_args__ = (CheckConstraint("full_name <> ''", name="employees_name_check"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True,
@@ -72,9 +68,7 @@ class ReportEmployeeOrm(Base):
     """Связь отчёта с сотрудником (отчёт по группе сотрудников)."""
 
     __tablename__ = "report_employees"
-    __table_args__ = (
-        Index("report_employees_employee_idx", "employee_id"),
-    )
+    __table_args__ = (Index("report_employees_employee_idx", "employee_id"),)
 
     report_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("reports.id", ondelete="CASCADE"), primary_key=True
@@ -120,9 +114,7 @@ class ReportOrm(Base):
         ForeignKey("users.id", ondelete="RESTRICT")
     )
 
-    employees: Mapped[list["EmployeeOrm"]] = relationship(
-        secondary="report_employees"
-    )
+    employees: Mapped[list["EmployeeOrm"]] = relationship(secondary="report_employees")
 
 
 class SettingOrm(Base):
@@ -202,4 +194,3 @@ class UserOrm(Base):
     )
 
     employee: Mapped["EmployeeOrm"] = relationship(back_populates="user")
-    

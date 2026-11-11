@@ -7,7 +7,11 @@ from pydantic import BaseModel, Field, model_validator
 
 class LoginRequest(BaseModel):
     username: str = Field(
-        ..., min_length=3, max_length=30, description="Логин пользователя", examples=["admin"]
+        ...,
+        min_length=3,
+        max_length=30,
+        description="Логин пользователя",
+        examples=["admin"],
     )
     password: str = Field(
         ..., min_length=4, max_length=64, description="Пароль", examples=["admin123"]
@@ -16,7 +20,11 @@ class LoginRequest(BaseModel):
 
 class EmployeeCreate(BaseModel):
     full_name: str = Field(
-        ..., min_length=2, max_length=150, description="ФИО сотрудника", examples=["Иванов Иван Иванович"]
+        ...,
+        min_length=2,
+        max_length=150,
+        description="ФИО сотрудника",
+        examples=["Иванов Иван Иванович"],
     )
     position: str = Field(
         ..., min_length=1, max_length=50, description="Должность", examples=["Охранник"]
@@ -50,5 +58,7 @@ class ReportRequest(BaseModel):
     @model_validator(mode="after")
     def check_dates(self) -> "ReportRequest":
         if self.date_from > self.date_to:
-            raise ValueError("Дата начала (date_from) не может быть позже даты окончания (date_to).")
+            raise ValueError(
+                "Дата начала (date_from) не может быть позже даты окончания (date_to)."
+            )
         return self

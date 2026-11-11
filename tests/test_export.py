@@ -45,11 +45,7 @@ def test_export_pdf(test_report, tmp_path):
 def test_export_empty_report(tmp_path):
     """Пустой отчёт экспортируется без ошибок"""
     report = Report(
-        title="Пустой",
-        period="Нет",
-        rows=[],
-        total_shifts=0,
-        total_hours=0.0
+        title="Пустой", period="Нет", rows=[], total_shifts=0, total_hours=0.0
     )
 
     pdf_path = tmp_path / "empty.pdf"
@@ -69,14 +65,10 @@ def test_export_pdf_special_chars(tmp_path):
         time_start=time(9, 0),
         time_end=time(18, 0),
         hours=9.0,
-        description="Работа с <XML> & > HTML"
+        description="Работа с <XML> & > HTML",
     )
     report = Report(
-        title="Отчёт <>&",
-        period="11.11",
-        rows=[row],
-        total_shifts=1,
-        total_hours=9.0
+        title="Отчёт <>&", period="11.11", rows=[row], total_shifts=1, total_hours=9.0
     )
 
     file_path = tmp_path / "special.pdf"

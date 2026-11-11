@@ -1,4 +1,5 @@
 """API роутер для генерации отчетов."""
+
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, status
