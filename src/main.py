@@ -71,7 +71,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """
     error_messages = []
     for err in exc.errors():
-        # Собираем путь к полю (например, body.full_name)
         loc = ".".join(str(x) for x in err["loc"])
         error_messages.append(f"[{loc}]: {err['msg']}")
 
@@ -83,7 +82,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             content={"detail": detail_str},
         )
 
-    # Для UI-форм делаем редирект с текстом ошибки
     safe_msg = urllib.parse.quote(detail_str)
     referer = request.headers.get("referer")
     base_url = str(request.base_url)
@@ -98,7 +96,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-secret = os.environ.get("SESSION_SECRET", "super-secret-default")
+secret = os.environ["SESSION_SECRET"]
 app.add_middleware(SessionMiddleware, secret_key=secret)
 
 app.mount("/static", StaticFiles(directory="web"), name="static")
