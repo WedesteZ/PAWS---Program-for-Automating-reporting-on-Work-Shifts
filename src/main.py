@@ -4,7 +4,7 @@ import os
 import shutil
 import tempfile
 import urllib.parse
-from datetime import date
+from datetime import date, time
 from uuid import UUID
 
 import uvicorn
@@ -48,10 +48,9 @@ async def value_error_handler(request: Request, exc: ValueError):
         return JSONResponse(status_code=status_code, content={"detail": str(exc)})
 
     safe_msg = urllib.parse.quote(str(exc))
-
-    # Безопасный редирект (защита от увода на сторонние сайты через Referer)
     referer = request.headers.get("referer")
     base_url = str(request.base_url)
+
     if not referer or not referer.startswith(base_url):
         referer = "/"
     if "?" in referer:
@@ -218,7 +217,7 @@ async def add_employee(
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
     if request.session.get("role") not in ["admin", "manager"]:
-        error_msg = urllib.parse.quote("Недостаточно прав для добавления сотрудника.")
+        error_msg = urllib.parse.quote("Недостаточно прав.")
         return RedirectResponse(
             url=f"/employees?error={error_msg}",
             status_code=status.HTTP_302_FOUND,
@@ -294,11 +293,15 @@ async def generate_report_ui(
 
     user_role = request.session.get("role", "employee")
 
-    # Безопасность: перехватываем подмену скрытого поля в HTML
     if user_role not in ["admin", "manager"]:
-        target_uuid = UUID(request.session.get("user_id"))
+        session_uid = request.session.get("user_id")
+        if not session_uid:
+            return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+        target_uuid = UUID(session_uid)
     else:
-        target_uuid = UUID(employee_id.strip()) if employee_id and employee_id.strip() else None
+        target_uuid = (
+            UUID(employee_id.strip()) if employee_id and employee_id.strip() else None
+        )
 
     employees = paws_core.list_employees()
 

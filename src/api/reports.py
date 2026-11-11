@@ -1,5 +1,7 @@
 """API роутер для генерации отчетов."""
-from fastapi import APIRouter, Request
+from uuid import UUID
+
+from fastapi import APIRouter, HTTPException, Request, status
 
 from src.api.dependencies import CurrentUser
 from src.container import paws_core
@@ -17,13 +19,19 @@ router = APIRouter(prefix="/api/reports", tags=["reports"])
     responses={401: {"description": "Необходима авторизация"}},
 )
 def generate_report(
-        request: Request, report_in: ReportRequest, _: CurrentUser
+    request: Request, report_in: ReportRequest, _: CurrentUser
 ) -> ReportOut:
-    """Сборка отчета с жесткой привязкой ID для рядовых сотрудников."""
+    """Сборка отчета с привязкой ID для рядовых сотрудников."""
     user_role = request.session.get("role", "employee")
 
     if user_role not in ["admin", "manager"]:
-        target_employee_id = request.session.get("user_id")
+        session_user_id = request.session.get("user_id")
+        if not session_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Сессия устарела. Пожалуйста, выполните вход заново.",
+            )
+        target_employee_id = UUID(session_user_id)
     else:
         target_employee_id = report_in.employee_id
 
