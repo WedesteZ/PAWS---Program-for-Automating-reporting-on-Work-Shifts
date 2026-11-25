@@ -26,12 +26,27 @@ from src.report import Report
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="PAWS Web")
+app = FastAPI(
+    title="PAWS API",
+    description="API и веб-интерфейс автоматизации отчётности по рабочим сменам.",
+    version="0.1.0",
+)
 
 app.include_router(auth_router)
 app.include_router(employees_router)
 app.include_router(shifts_router)
 app.include_router(reports_router)
+
+
+@app.get(
+    "/health",
+    tags=["system"],
+    summary="Проверка работоспособности",
+    description="Возвращает статус доступности веб-приложения.",
+)
+async def health_check() -> dict[str, str]:
+    """Возвращает статус работоспособности сервиса."""
+    return {"status": "ok"}
 
 
 @app.exception_handler(ValueError)
