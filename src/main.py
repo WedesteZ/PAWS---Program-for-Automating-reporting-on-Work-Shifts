@@ -9,9 +9,14 @@ from datetime import date, time
 from uuid import UUID
 
 import uvicorn
-from fastapi import Depends, FastAPI, Form, Request, status
+from fastapi import Depends, FastAPI, Form, Request, Response, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.background import BackgroundTask
@@ -50,7 +55,9 @@ async def health_check() -> dict[str, str]:
 
 
 @app.exception_handler(ValueError)
-async def value_error_handler(request: Request, exc: ValueError):
+async def value_error_handler(
+    request: Request, exc: ValueError
+) -> JSONResponse | RedirectResponse:
     """Глобальный перехватчик ValueError из сервисного слоя."""
     error_msg = str(exc).lower()
 
@@ -79,7 +86,9 @@ async def value_error_handler(request: Request, exc: ValueError):
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse | RedirectResponse:
     """
     Глобальный перехватчик ошибок валидации Pydantic (422).
     Форматирует стандартный список ошибок FastAPI в единую понятную строку.
@@ -124,7 +133,7 @@ def get_current_user(request: Request) -> str | None:
 
 
 @app.get("/login", response_class=HTMLResponse, include_in_schema=False)
-async def login_page(request: Request):
+async def login_page(request: Request) -> HTMLResponse:
     """Отображает страницу входа."""
     return templates.TemplateResponse(
         request=request, name="login.html", context={"title": "Вход в PAWS"}
@@ -134,7 +143,7 @@ async def login_page(request: Request):
 @app.post("/login", include_in_schema=False)
 async def login_post(
     request: Request, username: str = Form(...), password: str = Form(...)
-):
+) -> Response:
     """Обрабатывает данные формы авторизации."""
     try:
         user = auth_manager.login(username, password)
@@ -151,7 +160,7 @@ async def login_post(
 
 
 @app.get("/logout", include_in_schema=False)
-async def logout(request: Request):
+async def logout(request: Request) -> RedirectResponse:
     """Очищает сессию пользователя и выходит из аккаунта."""
     request.session.clear()
     return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -162,8 +171,8 @@ async def dashboard(
     request: Request,
     employee_id: str | None = None,
     error: str | None = None,
-    current_user: str = Depends(get_current_user),
-):
+    current_user: str | None = Depends(get_current_user),
+) -> Response:
     """Отображает дашборд управления сменами."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -199,8 +208,8 @@ async def add_shift(
     time_start: str = Form(...),
     time_end: str = Form(...),
     description: str = Form(""),
-    current_user: str = Depends(get_current_user),
-):
+    current_user: str | None = Depends(get_current_user),
+) -> RedirectResponse:
     """Добавляет новую смену через веб-интерфейс."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -237,8 +246,8 @@ async def add_shift(
 async def employees_page(
     request: Request,
     error: str | None = None,
-    current_user: str = Depends(get_current_user),
-):
+    current_user: str | None = Depends(get_current_user),
+) -> Response:
     """Отображает список всех сотрудников."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -260,8 +269,8 @@ async def add_employee(
     request: Request,
     full_name: str = Form(...),
     position: str = Form(""),
-    current_user: str = Depends(get_current_user),
-):
+    current_user: str | None = Depends(get_current_user),
+) -> RedirectResponse:
     """Создает нового сотрудника через веб-интерфейс."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -309,8 +318,8 @@ def export_response(
 async def reports_page(
     request: Request,
     error: str | None = None,
-    current_user: str = Depends(get_current_user),
-):
+    current_user: str | None = Depends(get_current_user),
+) -> Response:
     """Отображает страницу управления отчетами."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -335,8 +344,8 @@ async def generate_report_ui(
     date_to: str = Form(...),
     employee_id: str = Form(""),
     export_format: str = Form(""),
-    current_user: str = Depends(get_current_user),
-):
+    current_user: str | None = Depends(get_current_user),
+) -> Response:
     """Генерирует отчет через веб-интерфейс."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -354,7 +363,6 @@ async def generate_report_ui(
         )
 
     employees = paws_core.list_employees()
-
     try:
         d_from = date.fromisoformat(date_from)
         d_to = date.fromisoformat(date_to)
