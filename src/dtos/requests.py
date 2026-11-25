@@ -25,7 +25,7 @@ class LoginRequest(BaseModel):
         return v.strip()
 
 
-class EmployeeCreate(BaseModel):
+class EmployeeCreateRequest(BaseModel):
     """Модель запроса для создания нового сотрудника."""
 
     full_name: str = Field(
@@ -46,7 +46,7 @@ class EmployeeCreate(BaseModel):
         return v.strip()
 
 
-class ShiftCreate(BaseModel):
+class ShiftCreateRequest(BaseModel):
     """Модель запроса для добавления новой смены."""
 
     employee_id: UUID = Field(
@@ -66,7 +66,7 @@ class ShiftCreate(BaseModel):
     )
 
     @model_validator(mode="after")
-    def check_time(self) -> "ShiftCreate":
+    def check_time(self) -> "ShiftCreateRequest":
         """Проверяет, что время начала и окончания смены не совпадает."""
         if self.time_start == self.time_end:
             raise ValueError("Время начала и окончания смены не может совпадать.")
