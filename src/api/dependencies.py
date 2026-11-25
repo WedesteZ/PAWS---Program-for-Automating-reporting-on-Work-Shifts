@@ -1,6 +1,18 @@
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
+
+
+@dataclass(frozen=True)
+class SessionUser:
+    """Данные авторизованного пользователя из текущей сессии."""
+
+    username: str
+    role: str
+    employee_id: UUID | None
 
 
 def get_current_user(request: Request) -> str:
@@ -14,11 +26,21 @@ def get_current_user(request: Request) -> str:
     return user
 
 
-def RoleChecker(allowed_roles: list[str]):
+def get_current_session(request: Request) -> SessionUser:
+    """Возвращает данные пользователя, роль и ID сотрудника из сессии."""
+    username = get_current_user(request)
+    role = request.session.get("role", "employee")
+    raw_user_id = request.session.get("user_id")
+    employee_id = UUID(raw_user_id) if raw_user_id else None
+    return SessionUser(username=username, role=role, employee_id=employee_id)
+
+
+def RoleChecker(allowed_roles: list[str]) -> Callable[[Request], str]:
     """Генератор зависимостей для проверки ролей (RBAC)."""
 
-    def role_dependency(request: Request, user: str = Depends(get_current_user)) -> str:
+    def role_dependency(request: Request) -> str:
         """Проверяет наличие необходимой роли у текущего пользователя."""
+        get_current_user(request)
         role = request.session.get("role", "employee")
         if role not in allowed_roles:
             raise HTTPException(
@@ -30,6 +52,5 @@ def RoleChecker(allowed_roles: list[str]):
     return role_dependency
 
 
-# Готовые зависимости для инъекций
-CurrentUser = Annotated[str, Depends(get_current_user)]
-RequireManagerOrAdmin = Annotated[str, Depends(RoleChecker(["admin", "manager"]))]
+require_manager_or_admin = RoleChecker(["admin", "manager"])
+CurrentSession = Annotated[SessionUser, Depends(get_current_session)]
