@@ -4,19 +4,21 @@ from fastapi import APIRouter, HTTPException, Request, status
 
 from src.container import auth_manager
 from src.dtos.requests import LoginRequest
-from src.dtos.responses import UserOut
+from src.dtos.responses import UserResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post(
     "/login",
-    response_model=UserOut,
     summary="Авторизация",
     description="Выполняет вход, создает сессию и возвращает профиль пользователя.",
-    responses={401: {"description": "Неверный логин или пароль"}},
+    responses={
+        401: {"description": "Неверный логин или пароль"},
+        422: {"description": "Ошибка формата данных"},
+    },
 )
-def login(credentials: LoginRequest, request: Request) -> UserOut:
+def login(credentials: LoginRequest, request: Request) -> UserResponse:
     """Выполняет вход и возвращает данные пользователя."""
     try:
         user = auth_manager.login(credentials.username, credentials.password)
@@ -29,4 +31,4 @@ def login(credentials: LoginRequest, request: Request) -> UserOut:
     request.session["role"] = user.role.value
     request.session["user_id"] = str(user.employee_id)
 
-    return UserOut(username=user.username, role=user.role.value)
+    return UserResponse(username=user.username, role=user.role.value)
