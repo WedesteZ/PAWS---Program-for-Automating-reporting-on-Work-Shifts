@@ -385,7 +385,7 @@ async def generate_report_ui(
             url=f"/reports?error={error_msg}",
             status_code=status.HTTP_302_FOUND,
         )
-    except Exception:
+    except (OSError, RuntimeError):
         logger.exception("Ошибка при формировании отчёта")
         error_msg = urllib.parse.quote("Системная ошибка при генерации отчета.")
         return RedirectResponse(
