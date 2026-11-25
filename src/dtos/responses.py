@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class UserOut(BaseModel):
+class UserResponse(BaseModel):
     """Модель ответа с данными авторизованного пользователя."""
 
     model_config = ConfigDict(from_attributes=True)
@@ -12,7 +12,7 @@ class UserOut(BaseModel):
     role: str = Field(..., description="Роль пользователя", examples=["admin"])
 
 
-class EmployeeOut(BaseModel):
+class EmployeeResponse(BaseModel):
     """Модель ответа с публичными данными сотрудника."""
 
     model_config = ConfigDict(from_attributes=True)
@@ -25,7 +25,7 @@ class EmployeeOut(BaseModel):
     position: str = Field(..., description="Должность", examples=["Инженер"])
 
 
-class ShiftOut(BaseModel):
+class ShiftResponse(BaseModel):
     """Модель ответа с информацией о рабочей смене."""
 
     model_config = ConfigDict(from_attributes=True)
@@ -47,7 +47,7 @@ class ShiftOut(BaseModel):
     )
 
 
-class ReportRowOut(BaseModel):
+class ReportRowResponse(BaseModel):
     """Модель строки отчета по конкретной смене."""
 
     model_config = ConfigDict(from_attributes=True)
@@ -63,7 +63,7 @@ class ReportRowOut(BaseModel):
     )
 
 
-class ReportOut(BaseModel):
+class ReportResponse(BaseModel):
     """Модель ответа с агрегированным отчетом за период."""
 
     model_config = ConfigDict(from_attributes=True)
@@ -75,4 +75,6 @@ class ReportOut(BaseModel):
     total_hours: float = Field(
         ..., description="Итого часов за период", examples=[160.0]
     )
-    rows: list[ReportRowOut] = Field(default_factory=list, description="Строки отчета")
+    rows: list[ReportRowResponse] = Field(
+        default_factory=list, description="Строки отчета"
+    )
