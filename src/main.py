@@ -123,7 +123,7 @@ def get_current_user(request: Request) -> str | None:
     return request.session.get("user")
 
 
-@app.get("/login", response_class=HTMLResponse)
+@app.get("/login", response_class=HTMLResponse, include_in_schema=False)
 async def login_page(request: Request):
     """Отображает страницу входа."""
     return templates.TemplateResponse(
@@ -131,7 +131,7 @@ async def login_page(request: Request):
     )
 
 
-@app.post("/login")
+@app.post("/login", include_in_schema=False)
 async def login_post(
     request: Request, username: str = Form(...), password: str = Form(...)
 ):
@@ -150,14 +150,14 @@ async def login_post(
         )
 
 
-@app.get("/logout")
+@app.get("/logout", include_in_schema=False)
 async def logout(request: Request):
     """Очищает сессию пользователя и выходит из аккаунта."""
     request.session.clear()
     return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def dashboard(
     request: Request,
     employee_id: str | None = None,
@@ -191,7 +191,7 @@ async def dashboard(
     )
 
 
-@app.post("/shifts/add")
+@app.post("/shifts/add", include_in_schema=False)
 async def add_shift(
     request: Request,
     employee_id: str = Form(...),
@@ -233,7 +233,7 @@ async def add_shift(
     return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 
-@app.get("/employees", response_class=HTMLResponse)
+@app.get("/employees", response_class=HTMLResponse, include_in_schema=False)
 async def employees_page(
     request: Request,
     error: str | None = None,
@@ -255,7 +255,7 @@ async def employees_page(
     )
 
 
-@app.post("/employees/add")
+@app.post("/employees/add", include_in_schema=False)
 async def add_employee(
     request: Request,
     full_name: str = Form(...),
@@ -305,7 +305,7 @@ def export_response(
     )
 
 
-@app.get("/reports", response_class=HTMLResponse)
+@app.get("/reports", response_class=HTMLResponse, include_in_schema=False)
 async def reports_page(
     request: Request,
     error: str | None = None,
@@ -328,7 +328,7 @@ async def reports_page(
     )
 
 
-@app.post("/reports/generate")
+@app.post("/reports/generate", include_in_schema=False)
 async def generate_report_ui(
     request: Request,
     date_from: str = Form(...),
