@@ -1,7 +1,9 @@
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import date, time
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import UUID, uuid4
 
 os.environ.setdefault(
     "DATABASE_URL", "postgresql+psycopg://test:test@localhost:5432/test"
@@ -94,3 +96,31 @@ def api_client(api_mocks: tuple[MagicMock, MagicMock]) -> Iterator[TestClient]:
 
     with TestClient(app) as client:
         yield client
+
+
+@pytest.fixture
+def login_as(
+    api_client: TestClient,
+    api_mocks: tuple[MagicMock, MagicMock],
+) -> Callable[..., UUID | str]:
+    """Возвращает хелпер для авторизации TestClient под нужной ролью."""
+    _, mock_auth = api_mocks
+
+    def _login(
+        role: str = "admin",
+        employee_id: UUID | str | None = None,
+    ) -> UUID | str:
+        emp_id: UUID | str = uuid4() if employee_id is None else employee_id
+        mock_auth.login.return_value = SimpleNamespace(
+            username=f"user_{role}",
+            role=SimpleNamespace(value=role),
+            employee_id=emp_id,
+        )
+        response = api_client.post(
+            "/api/auth/login",
+            json={"username": f"user_{role}", "password": "secret"},
+        )
+        assert response.status_code == 200
+        return emp_id
+
+    return _login

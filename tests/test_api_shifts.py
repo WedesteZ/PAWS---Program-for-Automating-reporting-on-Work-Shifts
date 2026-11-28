@@ -1,31 +1,13 @@
 """Тесты API-роутера смен (/api/shifts)."""
 
+from collections.abc import Callable
 from datetime import date, time
-from types import SimpleNamespace
 from unittest.mock import MagicMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 
 from src.models import Employee, Shift
-
-
-def _login_as(
-    api_client: TestClient,
-    mock_auth: MagicMock,
-    role: str,
-) -> None:
-    """Авторизует тестовый клиент с указанной ролью."""
-    mock_auth.login.return_value = SimpleNamespace(
-        username=f"user_{role}",
-        role=SimpleNamespace(value=role),
-        employee_id=uuid4(),
-    )
-    response = api_client.post(
-        "/api/auth/login",
-        json={"username": f"user_{role}", "password": "secret"},
-    )
-    assert response.status_code == 200
 
 
 def test_get_shifts_unauthorized(api_client: TestClient) -> None:
@@ -37,13 +19,14 @@ def test_get_shifts_unauthorized(api_client: TestClient) -> None:
 def test_get_shifts_all_and_filtered(
     api_client: TestClient,
     api_mocks: tuple[MagicMock, MagicMock],
+    login_as: Callable[..., UUID | str],
     test_employee: Employee,
     test_shift: Shift,
 ) -> None:
     """Проверяет получение всех смен и фильтрацию по employee_id."""
-    mock_core, mock_auth = api_mocks
+    mock_core, _ = api_mocks
     mock_core.list_shifts.return_value = [test_shift]
-    _login_as(api_client, mock_auth, role="employee")
+    login_as(role="employee")
 
     all_response = api_client.get("/api/shifts")
     assert all_response.status_code == 200
@@ -87,11 +70,12 @@ def test_create_shift_unauthorized(
 def test_create_shift_forbidden_for_employee(
     api_client: TestClient,
     api_mocks: tuple[MagicMock, MagicMock],
+    login_as: Callable[..., UUID | str],
     test_employee: Employee,
 ) -> None:
     """Проверяет отказ 403 при попытке создать смену под ролью employee."""
-    mock_core, mock_auth = api_mocks
-    _login_as(api_client, mock_auth, role="employee")
+    mock_core, _ = api_mocks
+    login_as(role="employee")
 
     response = api_client.post(
         "/api/shifts",
@@ -110,13 +94,14 @@ def test_create_shift_forbidden_for_employee(
 def test_create_shift_success_for_manager(
     api_client: TestClient,
     api_mocks: tuple[MagicMock, MagicMock],
+    login_as: Callable[..., UUID | str],
     test_employee: Employee,
     test_shift: Shift,
 ) -> None:
     """Проверяет создание смены (201) под ролью manager."""
-    mock_core, mock_auth = api_mocks
+    mock_core, _ = api_mocks
     mock_core.add_shift.return_value = test_shift
-    _login_as(api_client, mock_auth, role="manager")
+    login_as(role="manager")
 
     response = api_client.post(
         "/api/shifts",
@@ -142,11 +127,12 @@ def test_create_shift_success_for_manager(
 def test_create_shift_not_found_returns_404(
     api_client: TestClient,
     api_mocks: tuple[MagicMock, MagicMock],
+    login_as: Callable[..., UUID | str],
 ) -> None:
     """Проверяет возврат 404, если сотрудник не найден."""
-    mock_core, mock_auth = api_mocks
+    mock_core, _ = api_mocks
     mock_core.add_shift.side_effect = ValueError("Сотрудник не найден")
-    _login_as(api_client, mock_auth, role="admin")
+    login_as(role="admin")
 
     response = api_client.post(
         "/api/shifts",
@@ -165,11 +151,12 @@ def test_create_shift_not_found_returns_404(
 def test_create_shift_overlap_returns_409(
     api_client: TestClient,
     api_mocks: tuple[MagicMock, MagicMock],
+    login_as: Callable[..., UUID | str],
 ) -> None:
     """Проверяет возврат 409 при пересечении смен."""
-    mock_core, mock_auth = api_mocks
+    mock_core, _ = api_mocks
     mock_core.add_shift.side_effect = ValueError("Смена пересекается с существующей")
-    _login_as(api_client, mock_auth, role="admin")
+    login_as(role="admin")
 
     response = api_client.post(
         "/api/shifts",
@@ -187,11 +174,10 @@ def test_create_shift_overlap_returns_409(
 
 def test_create_shift_equal_times_returns_422(
     api_client: TestClient,
-    api_mocks: tuple[MagicMock, MagicMock],
+    login_as: Callable[..., UUID | str],
 ) -> None:
     """Проверяет возврат 422 при совпадающем времени начала и окончания."""
-    _, mock_auth = api_mocks
-    _login_as(api_client, mock_auth, role="admin")
+    login_as(role="admin")
 
     response = api_client.post(
         "/api/shifts",

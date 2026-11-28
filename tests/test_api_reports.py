@@ -1,32 +1,13 @@
 """Тесты API-роутера отчётов (/api/reports)."""
 
+from collections.abc import Callable
 from datetime import date
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 
 from src.models import Report
-
-
-def _login_as(
-    api_client: TestClient,
-    mock_auth: MagicMock,
-    role: str,
-    employee_id: UUID | str,
-) -> None:
-    """Авторизует тестовый клиент с указанной ролью и ID сотрудника."""
-    mock_auth.login.return_value = SimpleNamespace(
-        username=f"user_{role}",
-        role=SimpleNamespace(value=role),
-        employee_id=employee_id,
-    )
-    response = api_client.post(
-        "/api/auth/login",
-        json={"username": f"user_{role}", "password": "secret"},
-    )
-    assert response.status_code == 200
 
 
 def test_generate_report_unauthorized(api_client: TestClient) -> None:
@@ -41,15 +22,16 @@ def test_generate_report_unauthorized(api_client: TestClient) -> None:
 def test_generate_report_employee_forced_to_own_id(
     api_client: TestClient,
     api_mocks: tuple[MagicMock, MagicMock],
+    login_as: Callable[..., UUID | str],
     test_report: Report,
 ) -> None:
     """Проверяет, что employee всегда получает отчёт только по своему ID."""
-    mock_core, mock_auth = api_mocks
+    mock_core, _ = api_mocks
     mock_core.generate_report.return_value = test_report
 
     own_id = uuid4()
     other_id = uuid4()
-    _login_as(api_client, mock_auth, role="employee", employee_id=own_id)
+    login_as(role="employee", employee_id=own_id)
 
     response = api_client.post(
         "/api/reports/generate",
@@ -75,10 +57,11 @@ def test_generate_report_employee_forced_to_own_id(
 def test_generate_report_employee_stale_session_returns_401(
     api_client: TestClient,
     api_mocks: tuple[MagicMock, MagicMock],
+    login_as: Callable[..., UUID | str],
 ) -> None:
     """Проверяет возврат 401 для employee при отсутствии user_id в сессии."""
-    mock_core, mock_auth = api_mocks
-    _login_as(api_client, mock_auth, role="employee", employee_id="")
+    mock_core, _ = api_mocks
+    login_as(role="employee", employee_id="")
 
     response = api_client.post(
         "/api/reports/generate",
@@ -92,12 +75,13 @@ def test_generate_report_employee_stale_session_returns_401(
 def test_generate_report_manager_can_query_all_or_specific(
     api_client: TestClient,
     api_mocks: tuple[MagicMock, MagicMock],
+    login_as: Callable[..., UUID | str],
     test_report: Report,
 ) -> None:
     """Проверяет, что manager может запросить общий отчёт и отчёт по ID."""
-    mock_core, mock_auth = api_mocks
+    mock_core, _ = api_mocks
     mock_core.generate_report.return_value = test_report
-    _login_as(api_client, mock_auth, role="manager", employee_id=uuid4())
+    login_as(role="manager")
 
     all_resp = api_client.post(
         "/api/reports/generate",
@@ -130,11 +114,12 @@ def test_generate_report_manager_can_query_all_or_specific(
 def test_generate_report_business_error_returns_400(
     api_client: TestClient,
     api_mocks: tuple[MagicMock, MagicMock],
+    login_as: Callable[..., UUID | str],
 ) -> None:
     """Проверяет преобразование ValueError при генерации отчёта в 400."""
-    mock_core, mock_auth = api_mocks
+    mock_core, _ = api_mocks
     mock_core.generate_report.side_effect = ValueError("Слишком большой период")
-    _login_as(api_client, mock_auth, role="admin", employee_id=uuid4())
+    login_as(role="admin")
 
     response = api_client.post(
         "/api/reports/generate",
@@ -147,11 +132,10 @@ def test_generate_report_business_error_returns_400(
 
 def test_generate_report_inverted_dates_returns_422(
     api_client: TestClient,
-    api_mocks: tuple[MagicMock, MagicMock],
+    login_as: Callable[..., UUID | str],
 ) -> None:
     """Проверяет возврат 422 при date_from позже date_to."""
-    _, mock_auth = api_mocks
-    _login_as(api_client, mock_auth, role="admin", employee_id=uuid4())
+    login_as(role="admin")
 
     response = api_client.post(
         "/api/reports/generate",
